@@ -58,7 +58,18 @@ export default function PDFEditor() {
         setPdfBytes(bytes);
 
         const pdfjsLib = await import("pdfjs-dist");
-        pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+
+        // Pre-seed globalThis.pdfjsWorker so PDF.js uses its main-thread
+        // fake-worker path instead of spawning a Web Worker. This avoids
+        // mobile browser issues with module workers (iOS Safari, MIME types
+        // on CDN/Vercel). The trade-off is that PDF parsing runs on the main
+        // thread, which is fine for interactive single-file use.
+        if (!("pdfjsWorker" in globalThis)) {
+          const workerMod = await import(
+            "pdfjs-dist/build/pdf.worker.min.mjs"
+          );
+          (globalThis as Record<string, unknown>).pdfjsWorker = workerMod;
+        }
 
         const doc = await pdfjsLib.getDocument({ data: bytes }).promise;
         setPdfDoc(doc);
