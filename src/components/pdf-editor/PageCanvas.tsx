@@ -181,7 +181,7 @@ export function PageCanvas({ pageNumber }: PageCanvasProps) {
   useEffect(() => {
     if (!fabricInstance.current) return;
     
-    const handleMouseDown = (options: fabric.IEvent<MouseEvent>) => {
+    const handleMouseDown = (options: fabric.IEvent | any) => {
         setActivePage(pageNumber); // Set active page on click
         
         if (activeTool === 'eraser' && options.target) {
