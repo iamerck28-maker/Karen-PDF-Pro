@@ -15,7 +15,15 @@ export async function loadPdf(file: File) {
 
 export async function renderPageToCanvas(pdf: pdfjs.PDFDocumentProxy, pageNumber: number, canvas: HTMLCanvasElement) {
   const page = await pdf.getPage(pageNumber);
-  const viewport = page.getViewport({ scale: 1.5 }); // High quality scale
+
+  // Responsive scale: fit within the viewport width with padding, max 1.5x for quality
+  const baseViewport = page.getViewport({ scale: 1 });
+  const maxWidth = typeof window !== 'undefined'
+    ? Math.min(window.innerWidth - 32, 1200)
+    : 1200;
+  const scale = Math.min(1.5, maxWidth / baseViewport.width);
+
+  const viewport = page.getViewport({ scale });
   const context = canvas.getContext('2d');
 
   if (!context) return null;
@@ -23,13 +31,7 @@ export async function renderPageToCanvas(pdf: pdfjs.PDFDocumentProxy, pageNumber
   canvas.height = viewport.height;
   canvas.width = viewport.width;
 
-  const renderContext = {
-    canvasContext: context,
-    viewport: viewport,
-    canvas: canvas,
-  };
-
-  await page.render(renderContext).promise;
+  await page.render({ canvasContext: context, viewport, canvas }).promise;
   return { width: viewport.width, height: viewport.height };
 }
 

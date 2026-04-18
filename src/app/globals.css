@@ -108,3 +108,17 @@
 ::-webkit-scrollbar-thumb {
   @apply bg-muted-foreground/20 rounded-full hover:bg-muted-foreground/30 transition-colors;
 }
+
+/* Hide scrollbar for mobile bottom toolbar horizontal scroll */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* iOS safe area spacer for bottom toolbar */
+.h-safe {
+  height: env(safe-area-inset-bottom, 0px);
+}

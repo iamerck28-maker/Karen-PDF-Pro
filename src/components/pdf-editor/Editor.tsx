@@ -43,9 +43,9 @@ export function Editor() {
   }
 
   return (
-    <div className="min-h-screen bg-background pt-24 pb-12">
+    <div className="min-h-screen bg-background pt-16 pb-28 md:pt-24 md:pb-12">
       <Toolbar />
-      <div className="max-w-5xl mx-auto px-4">
+      <div className="max-w-5xl mx-auto px-2 md:px-4">
         {Array.from({ length: numPages }, (_, i) => (
           <PageCanvas key={i + 1} pageNumber={i + 1} />
         ))}

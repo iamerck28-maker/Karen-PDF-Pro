@@ -207,7 +207,13 @@ export function PageCanvas({ pageNumber }: PageCanvasProps) {
     <div 
         ref={containerRef} 
         className={`relative mb-8 mx-auto canvas-container bg-white overflow-hidden transition-all duration-300 ${activePage === pageNumber ? 'ring-2 ring-primary ring-offset-2 dark:ring-offset-slate-900' : 'opacity-90 hover:opacity-100'} ${(activeTool === 'draw' || activeTool === 'eraser') ? 'cursor-none' : ''}`}
-        style={{ width: dimensions.width || '100%', height: dimensions.height || '800px' }}
+        style={{
+          width: dimensions.width || '100%',
+          height: dimensions.height || '800px',
+          maxWidth: '100%',
+          // Prevent page scroll from interfering with drawing on touch devices
+          touchAction: (activeTool === 'draw' || activeTool === 'eraser') ? 'none' : 'auto',
+        }}
         onMouseEnter={() => {
             setActivePage(pageNumber);
             setIsHovering(true);
