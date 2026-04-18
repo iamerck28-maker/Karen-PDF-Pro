@@ -28,7 +28,7 @@ export function Editor() {
   if (!file) {
     return (
       <div
-        className="flex flex-col items-center justify-start pt-12 md:justify-center md:pt-4 min-h-screen p-4 relative overflow-hidden bg-cover bg-no-repeat bg-[left_bottom] md:bg-bottom"
+        className="flex flex-col items-center justify-center min-h-screen p-6 px-10 relative overflow-hidden bg-cover bg-no-repeat bg-[left_bottom] md:bg-bottom"
         style={{
           backgroundImage: 'url(/cat-pattern.png)',
         }}
@@ -37,7 +37,7 @@ export function Editor() {
         <div className="absolute inset-0 bg-white/60 dark:bg-black/60 backdrop-blur-[2px]" />
 
         {/* Card */}
-        <div className="relative z-10 max-w-sm md:max-w-md w-full p-6 md:p-8 glass premium-shadow rounded-3xl text-center space-y-4 md:space-y-6 animate-in fade-in zoom-in duration-500 hover:translate-y-[-4px] transition-transform duration-300">
+        <div className="relative z-10 max-w-xs md:max-w-md w-full p-6 md:p-8 glass premium-shadow rounded-3xl text-center space-y-4 md:space-y-6 animate-in fade-in zoom-in duration-500 hover:translate-y-[-4px] transition-transform duration-300">
           <div className="mx-auto w-12 h-12 md:w-16 md:h-16 bg-black dark:bg-white rounded-2xl flex items-center justify-center text-white dark:text-black shadow-xl shadow-black/10 animate-bounce-slow">
             <FileText className="w-6 h-6 md:w-8 md:h-8" />
           </div>
