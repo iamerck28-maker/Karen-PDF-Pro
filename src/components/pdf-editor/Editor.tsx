@@ -26,8 +26,9 @@ export function Editor() {
         className="flex flex-col items-center justify-center min-h-screen p-4 relative overflow-hidden"
         style={{
           backgroundImage: 'url(/cat-pattern.png)',
-          backgroundSize: '280px',
-          backgroundRepeat: 'repeat',
+          backgroundSize: 'cover',
+          backgroundRepeat: 'no-repeat',
+          backgroundPosition: 'center',
         }}
       >
         {/* Subtle overlay so card stays readable in both light & dark mode */}
