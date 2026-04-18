@@ -322,13 +322,16 @@ function ToolButton({ active, onClick, icon, label }: { active: boolean; onClick
       onClick={onClick}
       title={label}
       className={cn(
-        'p-2 rounded-xl transition-all duration-300 ease-out flex items-center justify-center hover:-translate-y-0.5 hover:scale-105 active:scale-95 active:translate-y-0',
+        'p-2.5 rounded-xl transition-all duration-300 ease-out flex items-center justify-center relative group',
         active
-          ? 'bg-black text-white dark:bg-white dark:text-black shadow-lg shadow-black/10 scale-105'
-          : 'hover:bg-black/5 text-muted-foreground hover:text-foreground'
+          ? 'bg-black text-white dark:bg-white dark:text-black shadow-[0_0_15px_rgba(0,0,0,0.2)] dark:shadow-[0_0_15px_rgba(255,255,255,0.2)] scale-110 z-10'
+          : 'hover:bg-black/5 text-muted-foreground hover:text-foreground hover:scale-105'
       )}
     >
       {icon}
+      {active && (
+        <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-current rounded-full" />
+      )}
     </button>
   );
 }
