@@ -25,7 +25,8 @@ export function PageCanvas({ pageNumber }: PageCanvasProps) {
   const pdfCanvasRef = useRef<HTMLCanvasElement>(null);
   const fabricCanvasRef = useRef<HTMLCanvasElement>(null);
   const fabricInstance = useRef<fabric.Canvas | null>(null);
-  const [isVisible, setIsVisible] = useState(false);
+  // Always load the first page immediately, lazy load the rest
+  const [isVisible, setIsVisible] = useState(pageNumber === 1);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const { push, undo, redo } = useHistory<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -151,7 +152,11 @@ export function PageCanvas({ pageNumber }: PageCanvasProps) {
 
   useEffect(() => {
       if (dimensions.width && !fabricInstance.current) {
-          initFabric();
+          // Small delay for mobile browsers to settle layout
+          const timer = setTimeout(() => {
+            initFabric();
+          }, 100);
+          return () => clearTimeout(timer);
       }
   }, [dimensions, initFabric]);
 
@@ -209,10 +214,11 @@ export function PageCanvas({ pageNumber }: PageCanvasProps) {
   return (
     <div 
         ref={containerRef} 
-        className={`relative mb-8 mx-auto canvas-container bg-white overflow-hidden transition-all duration-300 ${activePage === pageNumber ? 'ring-2 ring-primary ring-offset-2 dark:ring-offset-slate-900' : 'opacity-90 hover:opacity-100'} ${(activeTool === 'draw' || activeTool === 'eraser') ? 'cursor-none' : ''}`}
+        className={`relative mb-8 mx-auto canvas-container bg-slate-50 dark:bg-slate-900 overflow-hidden transition-all duration-300 ${activePage === pageNumber ? 'ring-2 ring-primary ring-offset-2 dark:ring-offset-slate-900' : 'opacity-90 hover:opacity-100'} ${(activeTool === 'draw' || activeTool === 'eraser') ? 'cursor-none' : ''}`}
         style={{
           width: dimensions.width || '100%',
-          height: dimensions.height || '800px',
+          height: dimensions.height || 'auto',
+          minHeight: dimensions.height ? `${dimensions.height}px` : '300px',
           maxWidth: '100%',
           // Prevent page scroll from interfering with drawing on touch devices
           touchAction: (activeTool === 'draw' || activeTool === 'eraser') ? 'none' : 'auto',
@@ -272,15 +278,16 @@ export function PageCanvas({ pageNumber }: PageCanvasProps) {
       )}
 
       {isVisible ? (
-        <>
-          <canvas ref={pdfCanvasRef} className="absolute inset-0 z-0" />
-          <div className="absolute inset-0 z-10">
+        <div className="relative w-full h-full flex items-center justify-center bg-white dark:bg-slate-800">
+          <canvas ref={pdfCanvasRef} className="absolute inset-0 z-0 shadow-sm" />
+          <div className="absolute inset-0 z-10 w-full h-full">
             <canvas ref={fabricCanvasRef} />
           </div>
-        </>
+        </div>
       ) : (
-        <div className="flex items-center justify-center h-full text-muted-foreground animate-pulse">
-          Loading Page {pageNumber}...
+        <div className="flex flex-col items-center justify-center h-[300px] w-full text-muted-foreground animate-pulse gap-3">
+          <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+          <span className="text-xs font-semibold tracking-widest uppercase">Loading Page {pageNumber}</span>
         </div>
       )}
       
