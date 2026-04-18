@@ -22,8 +22,19 @@ export function Editor() {
 
   if (!file) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-background">
-        <div className="max-w-md w-full p-8 glass premium-shadow rounded-3xl text-center space-y-6">
+      <div
+        className="flex flex-col items-center justify-center min-h-screen p-4 relative overflow-hidden"
+        style={{
+          backgroundImage: 'url(/cat-pattern.png)',
+          backgroundSize: '280px',
+          backgroundRepeat: 'repeat',
+        }}
+      >
+        {/* Subtle overlay so card stays readable in both light & dark mode */}
+        <div className="absolute inset-0 bg-white/60 dark:bg-black/60 backdrop-blur-[2px]" />
+
+        {/* Card */}
+        <div className="relative z-10 max-w-md w-full p-8 glass premium-shadow rounded-3xl text-center space-y-6">
           <div className="mx-auto w-16 h-16 bg-black dark:bg-white rounded-2xl flex items-center justify-center text-white dark:text-black">
             <FileText size={32} />
           </div>
