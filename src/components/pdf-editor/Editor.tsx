@@ -23,10 +23,10 @@ export function Editor() {
   if (!file) {
     return (
       <div
-        className="flex flex-col items-center justify-center min-h-screen p-4 pb-[45vw] md:pb-[28vw] relative"
+        className="flex flex-col items-center justify-center min-h-screen p-4 relative overflow-hidden"
         style={{
           backgroundImage: 'url(/cat-pattern.png)',
-          backgroundSize: 'contain',
+          backgroundSize: 'cover',
           backgroundRepeat: 'no-repeat',
           backgroundPosition: 'bottom center',
         }}
