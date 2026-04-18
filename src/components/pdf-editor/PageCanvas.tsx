@@ -44,7 +44,9 @@ export function PageCanvas({ pageNumber }: PageCanvasProps) {
           observer.unobserve(entry.target);
         }
       },
-      { threshold: 0.1 }
+      { 
+        rootMargin: '400px', // Load pages before they enter viewport
+      }
     );
 
     if (containerRef.current) {
@@ -62,7 +64,8 @@ export function PageCanvas({ pageNumber }: PageCanvasProps) {
       width: dimensions.width,
       height: dimensions.height,
       selection: activeTool === 'select',
-      isDrawingMode: activeTool === 'draw'
+      isDrawingMode: activeTool === 'draw',
+      allowTouchScrolling: true // Enable scrolling by dragging the canvas on mobile
     });
 
     // Event listeners for history

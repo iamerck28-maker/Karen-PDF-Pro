@@ -3,7 +3,8 @@ import { PDFDocument, rgb } from 'pdf-lib';
 
 // Set worker path
 if (typeof window !== 'undefined') {
-  pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+  // Use a stable CDN version for workers to ensure cross-browser compatibility
+  pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 }
 
 export async function loadPdf(file: File) {
