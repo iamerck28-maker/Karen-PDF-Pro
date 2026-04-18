@@ -26,6 +26,7 @@ export async function renderPageToCanvas(pdf: pdfjs.PDFDocumentProxy, pageNumber
   const renderContext = {
     canvasContext: context,
     viewport: viewport,
+    canvas: canvas,
   };
 
   await page.render(renderContext).promise;
@@ -57,5 +58,5 @@ export async function exportPdf(originalFile: File, fabricStates: any[]) {
   }
 
   const pdfBytes = await pdfDoc.save();
-  return new Blob([pdfBytes], { type: 'application/pdf' });
+  return new Blob([pdfBytes.buffer as ArrayBuffer], { type: 'application/pdf' });
 }
