@@ -73,21 +73,19 @@ export default function PDFPage({
     const fc = new Canvas(el, {
       width: viewport.width,
       height: viewport.height,
-      selection: activeTool === "select",
-      isDrawingMode: activeTool === "brush",
+      selection: true,
+      isDrawingMode: false,
       renderOnAddRemove: true,
     });
 
-    const brush = new PencilBrush(fc);
-    brush.color = brushColor;
-    brush.width = brushSize;
-    fc.freeDrawingBrush = brush;
+    // The tool-sync effect below will set the correct brush/mode immediately
+    fc.freeDrawingBrush = new PencilBrush(fc);
 
     fabricRef.current = fc;
     onCanvasReady(pageNum, fc);
 
     fc.on("mouse:down", () => onFocus(pageNum));
-  }, [pdfPage, scale, pageNum, activeTool, brushColor, brushSize, onCanvasReady, onFocus]);
+  }, [pdfPage, scale, pageNum, onCanvasReady, onFocus]);
 
   // Virtual rendering: trigger on intersection
   useEffect(() => {
@@ -105,6 +103,15 @@ export default function PDFPage({
     observer.observe(el);
     return () => observer.disconnect();
   }, [renderPdfPage, initFabric]);
+
+  // Dispose Fabric canvas and cancel any in-flight render on unmount
+  useEffect(() => {
+    return () => {
+      renderTaskRef.current?.cancel();
+      fabricRef.current?.dispose();
+      fabricRef.current = null;
+    };
+  }, []);
 
   // Compute page dimensions for placeholder sizing
   useEffect(() => {
@@ -141,16 +148,19 @@ export default function PDFPage({
     if (!pendingImage || !fabricRef.current || pageNum !== 1) return;
     const fc = fabricRef.current;
     const insertImage = async () => {
-      const { FabricImage } = await import("fabric");
-      const img = await FabricImage.fromURL(pendingImage);
-      const maxW = (pageSize.width || 400) * 0.5;
-      const scaleFactor = Math.min(1, maxW / (img.width || 1));
-      img.scale(scaleFactor);
-      img.set({ left: 50, top: 50, globalCompositeOperation: "multiply" });
-      fc.add(img);
-      fc.setActiveObject(img);
-      fc.renderAll();
-      onPendingImageConsumed();
+      try {
+        const { FabricImage } = await import("fabric");
+        const img = await FabricImage.fromURL(pendingImage);
+        const maxW = (pageSize.width || 400) * 0.5;
+        const scaleFactor = Math.min(1, maxW / (img.width || 1));
+        img.scale(scaleFactor);
+        img.set({ left: 50, top: 50, globalCompositeOperation: "multiply" });
+        fc.add(img);
+        fc.setActiveObject(img);
+        fc.renderAll();
+      } finally {
+        onPendingImageConsumed();
+      }
     };
     insertImage();
   }, [pendingImage, pageSize, pageNum, onPendingImageConsumed]);
@@ -164,18 +174,22 @@ export default function PDFPage({
       const x = opt.scenePoint?.x ?? 100;
       const y = opt.scenePoint?.y ?? 100;
       const place = async () => {
-        const { IText } = await import("fabric");
-        const text = new IText("Edit me", {
-          left: x,
-          top: y,
-          fontSize,
-          fill: "#111111",
-          fontFamily: "Arial",
-        });
-        fc.add(text);
-        fc.setActiveObject(text);
-        text.enterEditing();
-        fc.renderAll();
+        try {
+          const { IText } = await import("fabric");
+          const text = new IText("Edit me", {
+            left: x,
+            top: y,
+            fontSize,
+            fill: "#111111",
+            fontFamily: "Arial",
+          });
+          fc.add(text);
+          fc.setActiveObject(text);
+          text.enterEditing();
+          fc.renderAll();
+        } catch {
+          // import or placement failed — do nothing
+        }
       };
       place();
     };

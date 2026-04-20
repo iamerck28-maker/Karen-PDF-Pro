@@ -47,6 +47,9 @@ export default function PDFEditor() {
       setPdfDoc(null);
       setPdfPages([]);
       setPdfBytes(null);
+      for (const canvas of fabricCanvasesRef.current.values()) {
+        canvas.dispose();
+      }
       fabricCanvasesRef.current.clear();
       undoStacksRef.current.clear();
       redoStacksRef.current.clear();
@@ -135,10 +138,14 @@ export default function PDFEditor() {
 
     const prev = undoStack[undoStack.length - 1];
     isRestoringRef.current.set(page, true);
-    fc.loadFromJSON(JSON.parse(prev)).then(() => {
-      fc.renderAll();
-      isRestoringRef.current.set(page, false);
-    });
+    fc.loadFromJSON(JSON.parse(prev))
+      .then(() => {
+        fc.renderAll();
+        isRestoringRef.current.set(page, false);
+      })
+      .catch(() => {
+        isRestoringRef.current.set(page, false);
+      });
   }, []);
 
   const redo = useCallback(() => {
@@ -155,10 +162,14 @@ export default function PDFEditor() {
     redoStacksRef.current.set(page, redoStack);
 
     isRestoringRef.current.set(page, true);
-    fc.loadFromJSON(JSON.parse(next)).then(() => {
-      fc.renderAll();
-      isRestoringRef.current.set(page, false);
-    });
+    fc.loadFromJSON(JSON.parse(next))
+      .then(() => {
+        fc.renderAll();
+        isRestoringRef.current.set(page, false);
+      })
+      .catch(() => {
+        isRestoringRef.current.set(page, false);
+      });
   }, []);
 
   // Keyboard shortcuts: Ctrl/Cmd+Z undo, Ctrl/Cmd+Shift+Z / Ctrl+Y redo
@@ -225,6 +236,7 @@ export default function PDFEditor() {
         // Rasterize the Fabric overlay (transparent background)
         const dataUrl = fc.toDataURL({ format: "png", multiplier: 1 });
         const base64 = dataUrl.split(",")[1];
+        if (!base64) throw new Error(`Page ${i + 1} produced an invalid canvas data URL`);
         const pngBytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
 
         const embeddedPng = await pdfLibDoc.embedPng(pngBytes);
@@ -234,7 +246,7 @@ export default function PDFEditor() {
       }
 
       const savedBytes = await pdfLibDoc.save();
-      const blob = new Blob([savedBytes as BlobPart], {
+      const blob = new Blob([savedBytes], {
         type: "application/pdf",
       });
       const url = URL.createObjectURL(blob);
