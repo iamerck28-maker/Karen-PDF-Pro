@@ -62,15 +62,10 @@ export default function PDFEditor() {
 
         const pdfjsLib = await import("pdfjs-dist");
 
-        // Use new URL(..., import.meta.url) so that Turbopack/webpack copies
-        // the worker file to the output and returns the correct URL. This
-        // avoids the mobile/CDN MIME-type issues that broke the workerSrc
-        // string approach, and is the recommended pattern for pdfjs-dist v5.
+        // Serve the worker from public/ — Vercel sets the correct MIME type
+        // for .mjs files, so this works on all browsers including iOS Safari.
         if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
-          pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-            "pdfjs-dist/build/pdf.worker.min.mjs",
-            import.meta.url
-          ).href;
+          pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
         }
 
         const doc = await pdfjsLib.getDocument({ data: bytes }).promise;
