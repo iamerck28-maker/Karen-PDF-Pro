@@ -1,11 +1,10 @@
 import * as pdfjs from 'pdfjs-dist';
 import { PDFDocument, rgb } from 'pdf-lib';
 
-// Set worker path
+// Worker is copied from node_modules to public/ by next.config.ts at build time,
+// ensuring the version always matches the installed pdfjs-dist package.
 if (typeof window !== 'undefined') {
-  // Use a specific, tested version from unpkg that matches the ES module requirements of PDF.js 4/5
-  const pdfjsVersion = '4.4.168'; // Stable version widely used with polyfills
-  pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.mjs`;
+  pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 }
 
 export async function loadPdf(file: File) {
