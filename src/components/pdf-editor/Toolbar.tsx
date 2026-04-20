@@ -87,7 +87,8 @@ export function Toolbar() {
   //    strokes) are snapped to fully opaque white — otherwise they composite
   //    as gray over dark PDF content (white×0.5 + black×0.5 = gray).
   const exportCanvasPng = (canvas: fabric.Canvas): string => {
-    const lowerEl = canvas.lowerCanvasEl;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const lowerEl = (canvas as any).lowerCanvasEl as HTMLCanvasElement;
     const tmp = document.createElement('canvas');
     tmp.width = lowerEl.width;
     tmp.height = lowerEl.height;
