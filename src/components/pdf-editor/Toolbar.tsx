@@ -79,6 +79,34 @@ export function Toolbar() {
     if (canvas?.historyRedo) canvas.historyRedo();
   };
 
+  // Export the Fabric canvas as a PNG with two pixel fixes applied:
+  // 1. Fully transparent pixels get RGB=white instead of RGB=black, so that
+  //    PDF viewer resampling (unpremultiplied) doesn't produce gray between
+  //    transparent and opaque areas.
+  // 2. Semi-transparent near-white pixels (anti-aliased edges of white brush
+  //    strokes) are snapped to fully opaque white — otherwise they composite
+  //    as gray over dark PDF content (white×0.5 + black×0.5 = gray).
+  const exportCanvasPng = (canvas: fabric.Canvas): string => {
+    const lowerEl = canvas.lowerCanvasEl;
+    const tmp = document.createElement('canvas');
+    tmp.width = lowerEl.width;
+    tmp.height = lowerEl.height;
+    const ctx = tmp.getContext('2d')!;
+    ctx.drawImage(lowerEl, 0, 0);
+    const img = ctx.getImageData(0, 0, tmp.width, tmp.height);
+    const d = img.data;
+    for (let i = 0; i < d.length; i += 4) {
+      const a = d[i + 3];
+      if (a === 0) {
+        d[i] = d[i + 1] = d[i + 2] = 255; // transparent-black → transparent-white
+      } else if (a < 255 && d[i] > 200 && d[i + 1] > 200 && d[i + 2] > 200) {
+        d[i + 3] = 255; // semi-transparent near-white → fully opaque white
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+    return tmp.toDataURL('image/png');
+  };
+
   const handleExport = async () => {
     if (!file || exportState === 'exporting') return;
     setExportState('exporting');
@@ -87,16 +115,10 @@ export function Toolbar() {
     for (const pageIdx of sortedKeys) {
       const canvas = fabricCanvases.current.get(pageIdx);
       if (!canvas) continue;
-      // Clear background before export so the PNG is transparent and only
-      // contains the annotations — prevents dark fringe artifacts caused by
-      // the PDF viewer downsampling a non-transparent or over-scaled image.
       const origBg = canvas.backgroundColor;
       canvas.backgroundColor = '';
       canvas.renderAll();
-      // multiplier:1 matches the canvas's natural resolution; multiplier:3 was
-      // causing aggressive downscaling in the PDF which created dark border
-      // artifacts at the edges of brush strokes.
-      states.push(canvas.toDataURL({ format: 'png', multiplier: 1 }));
+      states.push(exportCanvasPng(canvas));
       canvas.backgroundColor = origBg;
     }
     const blob = await exportPdf(file, states);
