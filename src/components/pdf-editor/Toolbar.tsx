@@ -86,7 +86,18 @@ export function Toolbar() {
     const states: string[] = [];
     for (const pageIdx of sortedKeys) {
       const canvas = fabricCanvases.current.get(pageIdx);
-      if (canvas) states.push(canvas.toDataURL({ format: 'png', multiplier: 3 }));
+      if (!canvas) continue;
+      // Clear background before export so the PNG is transparent and only
+      // contains the annotations — prevents dark fringe artifacts caused by
+      // the PDF viewer downsampling a non-transparent or over-scaled image.
+      const origBg = canvas.backgroundColor;
+      canvas.backgroundColor = '';
+      canvas.renderAll();
+      // multiplier:1 matches the canvas's natural resolution; multiplier:3 was
+      // causing aggressive downscaling in the PDF which created dark border
+      // artifacts at the edges of brush strokes.
+      states.push(canvas.toDataURL({ format: 'png', multiplier: 1 }));
+      canvas.backgroundColor = origBg;
     }
     const blob = await exportPdf(file, states);
     const url = URL.createObjectURL(blob);
