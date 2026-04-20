@@ -59,16 +59,15 @@ export default function PDFEditor() {
 
         const pdfjsLib = await import("pdfjs-dist");
 
-        // Pre-seed globalThis.pdfjsWorker so PDF.js uses its main-thread
-        // fake-worker path instead of spawning a Web Worker. This avoids
-        // mobile browser issues with module workers (iOS Safari, MIME types
-        // on CDN/Vercel). The trade-off is that PDF parsing runs on the main
-        // thread, which is fine for interactive single-file use.
-        if (!("pdfjsWorker" in globalThis)) {
-          const workerMod = await import(
-            "pdfjs-dist/build/pdf.worker.min.mjs"
-          );
-          (globalThis as Record<string, unknown>).pdfjsWorker = workerMod;
+        // Use new URL(..., import.meta.url) so that Turbopack/webpack copies
+        // the worker file to the output and returns the correct URL. This
+        // avoids the mobile/CDN MIME-type issues that broke the workerSrc
+        // string approach, and is the recommended pattern for pdfjs-dist v5.
+        if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
+          pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+            "pdfjs-dist/build/pdf.worker.min.mjs",
+            import.meta.url
+          ).href;
         }
 
         const doc = await pdfjsLib.getDocument({ data: bytes }).promise;
