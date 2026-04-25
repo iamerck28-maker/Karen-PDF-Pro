@@ -11,11 +11,12 @@ interface PageCanvasProps {
 }
 
 export function PageCanvas({ pageNumber }: PageCanvasProps) {
-  const { 
-    pdfDoc, 
-    activeTool, 
-    brushColor, 
-    brushWidth, 
+  const {
+    pdfDoc,
+    activeTool,
+    setActiveTool,
+    brushColor,
+    brushWidth,
     fabricCanvases,
     activePage,
     setActivePage
@@ -30,11 +31,16 @@ export function PageCanvas({ pageNumber }: PageCanvasProps) {
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const { push, undo, redo } = useHistory<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   // Brush indicator state
   const [mousePos, setMousePos] = useState({ x: -100, y: -100 });
   const [isHovering, setIsHovering] = useState(false);
   const isRestoringHistory = useRef(false);
+
+  // Shape drawing state
+  const isDrawingShape = useRef(false);
+  const shapeStart = useRef<{ x: number; y: number } | null>(null);
+  const activeRect = useRef<fabric.Rect | null>(null);
 
   // Intersection Observer for lazy loading
   useEffect(() => {
@@ -75,7 +81,14 @@ export function PageCanvas({ pageNumber }: PageCanvasProps) {
         push(JSON.stringify(canvas.toJSON()));
     };
 
-    canvas.on('path:created', saveState);
+    canvas.on('path:created', (e: fabric.IEvent & { path?: fabric.Path }) => {
+        // Fabric's PencilBrush sets fill:null which can cause rendering artifacts.
+        // Force it to transparent so the path is purely a stroke with no fill.
+        if (e.path) {
+            e.path.set({ fill: 'rgba(0,0,0,0)' });
+        }
+        saveState();
+    });
     canvas.on('object:added', saveState);
     canvas.on('object:modified', saveState);
     canvas.on('object:removed', saveState);
@@ -142,6 +155,9 @@ export function PageCanvas({ pageNumber }: PageCanvasProps) {
       } else if (activeTool === 'eraser') {
         cursor = 'none'; // Custom overlay for eraser too
         hoverCursor = 'none';
+      } else if (activeTool === 'shape') {
+        cursor = 'crosshair';
+        hoverCursor = 'crosshair';
       }
 
       fabricInstance.current.defaultCursor = cursor;
@@ -185,31 +201,88 @@ export function PageCanvas({ pageNumber }: PageCanvasProps) {
     }
   };
 
-  // Handle click events properly inside Fabric Canvas
+  // Handle click/draw events inside Fabric Canvas
   useEffect(() => {
     if (!fabricInstance.current) return;
-    
+
     const handleMouseDown = (options: fabric.IEvent | any) => {
-        setActivePage(pageNumber); // Set active page on click
-        
-        if (activeTool === 'eraser' && options.target) {
-            // Remove the clicked object
-            fabricInstance.current!.remove(options.target);
-            // Manually save state since object:removed might fire but we can force it
-            if (!isRestoringHistory.current) {
-                push(JSON.stringify(fabricInstance.current!.toJSON()));
-            }
-        } else if (activeTool === 'image' && !options.target) {
-            if (fileInputRef.current) fileInputRef.current.click();
+      setActivePage(pageNumber);
+
+      if (activeTool === 'eraser' && options.target) {
+        fabricInstance.current!.remove(options.target);
+        if (!isRestoringHistory.current) {
+          push(JSON.stringify(fabricInstance.current!.toJSON()));
         }
+      } else if (activeTool === 'image' && !options.target) {
+        if (fileInputRef.current) fileInputRef.current.click();
+      } else if (activeTool === 'shape') {
+        const pointer = fabricInstance.current!.getPointer(options.e);
+        isDrawingShape.current = true;
+        shapeStart.current = { x: pointer.x, y: pointer.y };
+
+        const rect = new fabric.Rect({
+          left: pointer.x,
+          top: pointer.y,
+          width: 0,
+          height: 0,
+          fill: brushColor,
+          selectable: false,
+          evented: false,
+          strokeUniform: true,
+        });
+
+        fabricInstance.current!.add(rect);
+        activeRect.current = rect;
+      }
+    };
+
+    const handleMouseMove = (options: fabric.IEvent | any) => {
+      if (activeTool !== 'shape' || !isDrawingShape.current || !shapeStart.current || !activeRect.current) return;
+      const pointer = fabricInstance.current!.getPointer(options.e);
+      const left = Math.min(shapeStart.current.x, pointer.x);
+      const top = Math.min(shapeStart.current.y, pointer.y);
+      const width = Math.abs(pointer.x - shapeStart.current.x);
+      const height = Math.abs(pointer.y - shapeStart.current.y);
+      activeRect.current.set({ left, top, width, height });
+      fabricInstance.current!.renderAll();
+    };
+
+    const handleMouseUp = () => {
+      if (activeTool !== 'shape' || !isDrawingShape.current) return;
+      isDrawingShape.current = false;
+
+      if (activeRect.current) {
+        const w = activeRect.current.width ?? 0;
+        const h = activeRect.current.height ?? 0;
+
+        if (w < 3 || h < 3) {
+          fabricInstance.current!.remove(activeRect.current);
+        } else {
+          activeRect.current.set({ selectable: true, evented: true });
+          fabricInstance.current!.setActiveObject(activeRect.current);
+          fabricInstance.current!.renderAll();
+          if (!isRestoringHistory.current) {
+            push(JSON.stringify(fabricInstance.current!.toJSON()));
+          }
+        }
+
+        activeRect.current = null;
+      }
+
+      shapeStart.current = null;
+      setActiveTool('select');
     };
 
     fabricInstance.current.on('mouse:down', handleMouseDown);
-    
+    fabricInstance.current.on('mouse:move', handleMouseMove);
+    fabricInstance.current.on('mouse:up', handleMouseUp);
+
     return () => {
-        fabricInstance.current?.off('mouse:down', handleMouseDown);
+      fabricInstance.current?.off('mouse:down', handleMouseDown);
+      fabricInstance.current?.off('mouse:move', handleMouseMove);
+      fabricInstance.current?.off('mouse:up', handleMouseUp);
     };
-  }, [activeTool, brushColor, brushWidth, pageNumber, setActivePage]);
+  }, [activeTool, brushColor, pageNumber, setActivePage, setActiveTool, push]);
 
   return (
     <div 
@@ -220,8 +293,7 @@ export function PageCanvas({ pageNumber }: PageCanvasProps) {
           height: dimensions.height || 'auto',
           minHeight: dimensions.height ? `${dimensions.height}px` : '300px',
           maxWidth: '100%',
-          // Prevent page scroll from interfering with drawing on touch devices
-          touchAction: (activeTool === 'draw' || activeTool === 'eraser') ? 'none' : 'auto',
+          touchAction: (activeTool === 'draw' || activeTool === 'eraser' || activeTool === 'shape') ? 'none' : 'auto',
         }}
         onMouseEnter={() => {
             setActivePage(pageNumber);

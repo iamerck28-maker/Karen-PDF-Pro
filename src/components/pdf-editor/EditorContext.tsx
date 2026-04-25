@@ -11,8 +11,8 @@ interface EditorContextType {
   setPdfDoc: (doc: pdfjs.PDFDocumentProxy | null) => void;
   numPages: number;
   setNumPages: (n: number) => void;
-  activeTool: 'select' | 'draw' | 'image' | 'eraser';
-  setActiveTool: (tool: 'select' | 'draw' | 'image' | 'eraser') => void;
+  activeTool: 'select' | 'draw' | 'image' | 'eraser' | 'shape';
+  setActiveTool: (tool: 'select' | 'draw' | 'image' | 'eraser' | 'shape') => void;
   brushColor: string;
   setBrushColor: (color: string) => void;
   brushWidth: number;
@@ -32,7 +32,7 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
   const [file, setFile] = useState<File | null>(null);
   const [pdfDoc, setPdfDoc] = useState<pdfjs.PDFDocumentProxy | null>(null);
   const [numPages, setNumPages] = useState(0);
-  const [activeTool, setActiveTool] = useState<'select' | 'draw' | 'image' | 'eraser'>('select');
+  const [activeTool, setActiveTool] = useState<'select' | 'draw' | 'image' | 'eraser' | 'shape'>('select');
   const [brushColor, setBrushColor] = useState('#ffffff');
   const [brushWidth, setBrushWidth] = useState(15);
   const fabricCanvases = useRef<Map<number, fabric.Canvas>>(new Map());

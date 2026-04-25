@@ -3,10 +3,10 @@
 import React, { useRef, useState } from 'react';
 import { fabric } from 'fabric';
 import { useEditor } from './EditorContext';
-import { 
-  MousePointer2, Pencil, Image as ImageIcon, Undo2, Redo2, 
-  Download, Plus, Minus, Sun, Moon, Eraser, Check, Loader2, 
-  PenTool, Trash2
+import {
+  MousePointer2, Pencil, Image as ImageIcon, Undo2, Redo2,
+  Download, Plus, Minus, Sun, Moon, Eraser, Check, Loader2,
+  PenTool, Trash2, Square
 } from 'lucide-react';
 import { SignatureModal } from './SignatureModal';
 import { cn } from '@/lib/utils';
@@ -101,6 +101,7 @@ export function Toolbar() {
       if (a === 0) {
         d[i] = d[i + 1] = d[i + 2] = 255; // transparent-black → transparent-white
       } else if (a < 255 && d[i] > 200 && d[i + 1] > 200 && d[i + 2] > 200) {
+        d[i] = d[i + 1] = d[i + 2] = 255; // force to pure white
         d[i + 3] = 255; // semi-transparent near-white → fully opaque white
       }
     }
@@ -242,6 +243,20 @@ export function Toolbar() {
     </div>
   );
 
+  // Shape color control (color picker only — size is set by dragging on canvas)
+  const shapeControls = (
+    <div className="flex items-center gap-2 px-3 py-1.5 ml-1 bg-black/5 dark:bg-white/5 rounded-2xl flex-shrink-0">
+      <input
+        type="color"
+        value={brushColor}
+        onChange={(e) => setBrushColor(e.target.value)}
+        className="w-7 h-7 rounded-full border-0 cursor-pointer overflow-hidden p-0 bg-transparent ring-2 ring-primary/20"
+        title="Shape fill color"
+      />
+      <span className="text-xs font-semibold text-muted-foreground select-none">Fill</span>
+    </div>
+  );
+
   return (
     <>
       <input type="file" ref={imageInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
@@ -261,6 +276,7 @@ export function Toolbar() {
           <div className="flex items-center gap-1 p-1 bg-black/5 dark:bg-white/5 rounded-2xl">
             <ToolButton active={activeTool === 'select'} onClick={() => setActiveTool('select')} icon={<MousePointer2 size={18} />} label="Select" />
             <ToolButton active={activeTool === 'draw'} onClick={() => setActiveTool('draw')} icon={<Pencil size={18} />} label="Draw" />
+            <ToolButton active={activeTool === 'shape'} onClick={() => setActiveTool('shape')} icon={<Square size={18} />} label="Add Shape" />
             <ToolButton
               active={activeTool === 'image'}
               onClick={() => { setActiveTool('image'); imageInputRef.current?.click(); }}
@@ -275,6 +291,7 @@ export function Toolbar() {
           </div>
 
           {activeTool === 'draw' && brushControls}
+          {activeTool === 'shape' && shapeControls}
         </div>
 
         {/* Right – Actions */}
@@ -325,6 +342,7 @@ export function Toolbar() {
           <div className="flex items-center gap-1 p-1 bg-black/5 dark:bg-white/5 rounded-2xl flex-shrink-0">
             <ToolButton active={activeTool === 'select'} onClick={() => setActiveTool('select')} icon={<MousePointer2 size={18} />} label="Select" />
             <ToolButton active={activeTool === 'draw'} onClick={() => setActiveTool('draw')} icon={<Pencil size={18} />} label="Draw" />
+            <ToolButton active={activeTool === 'shape'} onClick={() => setActiveTool('shape')} icon={<Square size={18} />} label="Add Shape" />
             <ToolButton
               active={activeTool === 'image'}
               onClick={() => { setActiveTool('image'); imageInputRef.current?.click(); }}
@@ -338,8 +356,8 @@ export function Toolbar() {
             <ToolButton active={activeTool === 'eraser'} onClick={() => setActiveTool('eraser')} icon={<Eraser size={18} />} label="Eraser" />
           </div>
 
-          {/* Brush controls (shown when draw is active) */}
           {activeTool === 'draw' && brushControls}
+          {activeTool === 'shape' && shapeControls}
         </div>
         {/* iOS safe area spacer */}
         <div className="h-safe" />
