@@ -10,12 +10,12 @@ import {
 } from 'lucide-react';
 import { SignatureModal } from './SignatureModal';
 import { cn } from '@/lib/utils';
-import { exportPdf } from '@/lib/pdf-utils';
+import { exportPdf, createCombinedPagePng } from '@/lib/pdf-utils';
 
 export function Toolbar() {
-  const { 
+  const {
     activeTool, setActiveTool, brushColor, setBrushColor, brushWidth, setBrushWidth,
-    file, fabricCanvases, activePage, theme, setTheme, signatures, setSignatures
+    file, pdfDoc, fabricCanvases, activePage, theme, setTheme, signatures, setSignatures
   } = useEditor();
 
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -79,50 +79,30 @@ export function Toolbar() {
     if (canvas?.historyRedo) canvas.historyRedo();
   };
 
-  // Export the Fabric canvas as a PNG with two pixel fixes applied:
-  // 1. Fully transparent pixels get RGB=white instead of RGB=black, so that
-  //    PDF viewer resampling (unpremultiplied) doesn't produce gray between
-  //    transparent and opaque areas.
-  // 2. Semi-transparent near-white pixels (anti-aliased edges of white brush
-  //    strokes) are snapped to fully opaque white — otherwise they composite
-  //    as gray over dark PDF content (white×0.5 + black×0.5 = gray).
-  const exportCanvasPng = (canvas: fabric.Canvas): string => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const lowerEl = (canvas as any).lowerCanvasEl as HTMLCanvasElement;
-    const tmp = document.createElement('canvas');
-    tmp.width = lowerEl.width;
-    tmp.height = lowerEl.height;
-    const ctx = tmp.getContext('2d')!;
-    ctx.drawImage(lowerEl, 0, 0);
-    const img = ctx.getImageData(0, 0, tmp.width, tmp.height);
-    const d = img.data;
-    for (let i = 0; i < d.length; i += 4) {
-      const a = d[i + 3];
-      if (a === 0) {
-        d[i] = d[i + 1] = d[i + 2] = 255; // transparent-black → transparent-white
-      } else if (a < 255 && d[i] > 200 && d[i + 1] > 200 && d[i + 2] > 200) {
-        d[i] = d[i + 1] = d[i + 2] = 255; // force to pure white
-        d[i + 3] = 255; // semi-transparent near-white → fully opaque white
-      }
-    }
-    ctx.putImageData(img, 0, 0);
-    return tmp.toDataURL('image/png');
-  };
-
   const handleExport = async () => {
-    if (!file || exportState === 'exporting') return;
+    if (!file || !pdfDoc || exportState === 'exporting') return;
     setExportState('exporting');
-    const sortedKeys = Array.from(fabricCanvases.current.keys()).sort((a, b) => a - b);
-    const states: string[] = [];
-    for (const pageIdx of sortedKeys) {
-      const canvas = fabricCanvases.current.get(pageIdx);
-      if (!canvas) continue;
-      const origBg = canvas.backgroundColor;
-      canvas.backgroundColor = '';
-      canvas.renderAll();
-      states.push(exportCanvasPng(canvas));
-      canvas.backgroundColor = origBg;
+
+    // Build a states array indexed 0…numPages-1 (null = no annotations on that page).
+    // Combining the PDF render and Fabric annotations into a single opaque canvas here
+    // eliminates all alpha-compositing artifacts (halos, outlines on white brush strokes).
+    const totalPages = pdfDoc.numPages;
+    const states: (string | null)[] = new Array(totalPages).fill(null);
+
+    for (const [pageIdx, fabricCanvas] of fabricCanvases.current) {
+      // Strip the Fabric background so only annotations are drawn over the PDF render.
+      const origBg = fabricCanvas.backgroundColor;
+      fabricCanvas.backgroundColor = '';
+      fabricCanvas.renderAll();
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const lowerEl = (fabricCanvas as any).lowerCanvasEl as HTMLCanvasElement;
+      states[pageIdx - 1] = await createCombinedPagePng(pdfDoc, pageIdx, lowerEl);
+
+      fabricCanvas.backgroundColor = origBg;
+      fabricCanvas.renderAll();
     }
+
     const blob = await exportPdf(file, states);
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');

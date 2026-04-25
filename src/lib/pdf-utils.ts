@@ -1,5 +1,5 @@
 import * as pdfjs from 'pdfjs-dist';
-import { PDFDocument, rgb } from 'pdf-lib';
+import { PDFDocument } from 'pdf-lib';
 
 // Worker is copied from node_modules to public/ by next.config.ts at build time,
 // ensuring the version always matches the installed pdfjs-dist package.
@@ -36,28 +36,56 @@ export async function renderPageToCanvas(pdf: pdfjs.PDFDocumentProxy, pageNumber
   return { width: viewport.width, height: viewport.height };
 }
 
-export async function exportPdf(originalFile: File, fabricStates: any[]) {
+// Renders a single PDF page and draws the Fabric annotation layer on top into
+// one fully-opaque canvas, then returns it as a PNG data URL.
+// Because everything is composited on the canvas (not in the PDF), there are no
+// alpha-channel artifacts or anti-aliasing halos in the exported result.
+export async function createCombinedPagePng(
+  pdfJsDoc: pdfjs.PDFDocumentProxy,
+  pageNum: number,
+  fabricLowerEl: HTMLCanvasElement
+): Promise<string> {
+  const page = await pdfJsDoc.getPage(pageNum);
+  const baseViewport = page.getViewport({ scale: 1 });
+  const maxWidth = typeof window !== 'undefined'
+    ? Math.min(window.innerWidth - 32, 1200)
+    : 1200;
+  const scale = Math.min(1.5, maxWidth / baseViewport.width);
+  const viewport = page.getViewport({ scale });
+
+  const combined = document.createElement('canvas');
+  combined.width = viewport.width;
+  combined.height = viewport.height;
+  const ctx = combined.getContext('2d')!;
+
+  // 1. Render the original PDF page (opaque background)
+  await page.render({ canvasContext: ctx, viewport, canvas: combined }).promise;
+
+  // 2. Composite Fabric annotations on top.
+  //    Transparent pixels in fabricLowerEl leave the PDF content untouched;
+  //    opaque annotation pixels (brush strokes, shapes, etc.) cover it.
+  //    Anti-aliased edges blend naturally with the PDF pixels underneath —
+  //    no PDF-level transparency compositing issues.
+  ctx.drawImage(fabricLowerEl, 0, 0);
+
+  return combined.toDataURL('image/png');
+}
+
+// fabricStates is indexed 0…numPages-1; null means the page has no annotations.
+export async function exportPdf(originalFile: File, fabricStates: (string | null)[]) {
   const originalBytes = await originalFile.arrayBuffer();
   const pdfDoc = await PDFDocument.load(originalBytes);
   const pages = pdfDoc.getPages();
 
   for (let i = 0; i < fabricStates.length; i++) {
-    const fabricData = fabricStates[i];
-    if (!fabricData) continue;
+    const dataUrl = fabricStates[i];
+    if (!dataUrl || i >= pages.length) continue;
 
     const page = pages[i];
     const { width, height } = page.getSize();
 
-    // Convert Fabric.js canvas to image data
-    // We expect fabricData to be a dataURL or similar
-    const image = await pdfDoc.embedPng(fabricData);
-    
-    page.drawImage(image, {
-      x: 0,
-      y: 0,
-      width: width,
-      height: height,
-    });
+    const image = await pdfDoc.embedPng(dataUrl);
+    page.drawImage(image, { x: 0, y: 0, width, height });
   }
 
   const pdfBytes = await pdfDoc.save();
