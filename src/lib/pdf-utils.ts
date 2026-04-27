@@ -62,11 +62,10 @@ export async function createCombinedPagePng(
   await page.render({ canvasContext: ctx, viewport, canvas: combined }).promise;
 
   // 2. Composite Fabric annotations on top.
-  //    Transparent pixels in fabricLowerEl leave the PDF content untouched;
-  //    opaque annotation pixels (brush strokes, shapes, etc.) cover it.
-  //    Anti-aliased edges blend naturally with the PDF pixels underneath —
-  //    no PDF-level transparency compositing issues.
-  ctx.drawImage(fabricLowerEl, 0, 0);
+  //    Fabric's lowerCanvasEl is scaled by devicePixelRatio (retina scaling),
+  //    so its pixel dimensions are larger than the viewport. We explicitly
+  //    draw it scaled down to viewport size so annotations align with the PDF.
+  ctx.drawImage(fabricLowerEl, 0, 0, viewport.width, viewport.height);
 
   return combined.toDataURL('image/png');
 }
