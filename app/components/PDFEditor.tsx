@@ -419,6 +419,60 @@ export default function PDFEditor() {
     }
   }, [pdfBytes, pdfPages, deletedPages, pageRotations, pageOrder]);
 
+  const handleExportPNG = useCallback(async () => {
+    if (pdfPages.length === 0) return;
+    setIsExporting(true);
+    try {
+      const order = pageOrder.length > 0 ? pageOrder : pdfPages.map((_, i) => i);
+      for (const originalIdx of order) {
+        const pageNum = originalIdx + 1;
+        if (deletedPages.has(pageNum)) continue;
+
+        const pdfPage = pdfPages[originalIdx];
+        const exportScale = 2.0;
+        const viewport = pdfPage.getViewport({ scale: exportScale });
+
+        const canvas = document.createElement("canvas");
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        await pdfPage.render({ canvas, viewport }).promise;
+
+        const fc = fabricCanvasesRef.current.get(pageNum);
+        if (fc && fc.getObjects().length > 0) {
+          const overlayUrl = fc.toDataURL({ format: "png", multiplier: exportScale / (PDF_SCALE * zoom) });
+          await new Promise<void>((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+              canvas.getContext("2d")!.drawImage(img, 0, 0, viewport.width, viewport.height);
+              resolve();
+            };
+            img.src = overlayUrl;
+          });
+        }
+
+        await new Promise<void>((resolve) => {
+          canvas.toBlob((blob) => {
+            if (!blob) { resolve(); return; }
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `page-${pageNum}.png`;
+            a.click();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            resolve();
+          }, "image/png");
+        });
+
+        // Small delay so browser doesn't block multiple downloads
+        await new Promise(r => setTimeout(r, 350));
+      }
+    } catch (err) {
+      alert(`PNG export failed: ${(err as Error).message}`);
+    } finally {
+      setIsExporting(false);
+    }
+  }, [pdfPages, deletedPages, pageOrder, zoom]);
+
   const effectiveScale = PDF_SCALE * zoom;
 
   // ── Render ───────────────────────────────────────────────────────────────
@@ -481,6 +535,7 @@ export default function PDFEditor() {
         onToggleSidebar={() => setSidebarOpen(v => !v)}
         onSignatureClick={() => setSignatureOpen(true)}
         onStamp={handleStamp}
+        onExportPNG={handleExportPNG}
         textColor={textColor}
         onTextColorChange={setTextColor}
         fontFamily={fontFamily}

@@ -38,6 +38,7 @@ interface ToolbarProps {
   onToggleSidebar: () => void;
   onSignatureClick: () => void;
   onStamp: (text: string, color: string) => void;
+  onExportPNG: () => void;
   shapeFill: string;
   onShapeFillChange: (color: string) => void;
   textColor: string;
@@ -75,6 +76,7 @@ export default function Toolbar({
   onToggleSidebar,
   onSignatureClick,
   onStamp,
+  onExportPNG,
   shapeFill,
   onShapeFillChange,
   textColor,
@@ -407,7 +409,15 @@ export default function Toolbar({
         disabled={!hasPdf || isExporting}
         title="Download edited PDF"
       >
-        {isExporting ? "Exporting…" : "⬇ Download PDF"}
+        {isExporting ? "Exporting…" : "⬇ PDF"}
+      </button>
+      <button
+        className={`${btnBase} bg-teal-700 text-white hover:bg-teal-600 disabled:opacity-40 disabled:cursor-not-allowed`}
+        onClick={onExportPNG}
+        disabled={!hasPdf || isExporting}
+        title="Download pages as PNG images"
+      >
+        ⬇ PNG
       </button>
     </div>
   );
