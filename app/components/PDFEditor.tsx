@@ -163,6 +163,14 @@ export default function PDFEditor() {
     });
   }, []);
 
+  const handleZoomIn = useCallback(() => {
+    setZoom(z => Math.min(3.0, parseFloat((z + 0.25).toFixed(2))));
+  }, []);
+  const handleZoomOut = useCallback(() => {
+    setZoom(z => Math.max(0.25, parseFloat((z - 0.25).toFixed(2))));
+  }, []);
+  const handleZoomReset = useCallback(() => setZoom(1.0), []);
+
   // Keyboard shortcuts: Ctrl/Cmd+Z undo, Ctrl/Cmd+Shift+Z / Ctrl+Y redo
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -219,14 +227,6 @@ export default function PDFEditor() {
     setPendingImage(null);
     setActiveTool("select");
   }, []);
-
-  const handleZoomIn = useCallback(() => {
-    setZoom(z => Math.min(3.0, parseFloat((z + 0.25).toFixed(2))));
-  }, []);
-  const handleZoomOut = useCallback(() => {
-    setZoom(z => Math.max(0.25, parseFloat((z - 0.25).toFixed(2))));
-  }, []);
-  const handleZoomReset = useCallback(() => setZoom(1.0), []);
 
   // ── Export ───────────────────────────────────────────────────────────────
   const handleExport = useCallback(async () => {

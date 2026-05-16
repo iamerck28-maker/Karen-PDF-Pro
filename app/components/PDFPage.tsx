@@ -119,16 +119,21 @@ export default function PDFPage({
     if (!fc) return;
     const update = async () => {
       const { PencilBrush } = await import("fabric");
-      fc.isDrawingMode = activeTool === "brush";
+      fc.isDrawingMode = activeTool === "brush" || activeTool === "highlight";
       fc.selection = activeTool === "select";
       if (activeTool === "brush") {
-        if (!fc.freeDrawingBrush) {
-          fc.freeDrawingBrush = new PencilBrush(fc);
-        }
+        if (!fc.freeDrawingBrush) fc.freeDrawingBrush = new PencilBrush(fc);
         fc.freeDrawingBrush.color = brushColor;
         fc.freeDrawingBrush.width = brushSize;
       }
-      if (activeTool !== "select") {
+      if (activeTool === "highlight") {
+        if (!fc.freeDrawingBrush) fc.freeDrawingBrush = new PencilBrush(fc);
+        // Semi-transparent yellow highlight
+        const hex = brushColor === "#e53e3e" ? "#facc15" : brushColor;
+        fc.freeDrawingBrush.color = hex + "66"; // ~40% opacity
+        fc.freeDrawingBrush.width = Math.max(brushSize, 12);
+      }
+      if (!["select", "brush", "highlight"].includes(activeTool)) {
         fc.discardActiveObject();
         fc.renderAll();
       }
@@ -176,6 +181,123 @@ export default function PDFPage({
     });
     fc.renderAll();
   }, [scale, pdfPage]);
+
+  // Shape drawing: rect, circle, line
+  useEffect(() => {
+    const fc = fabricRef.current;
+    if (!fc || !["rect", "circle", "line"].includes(activeTool)) return;
+
+    let isDown = false;
+    let startX = 0;
+    let startY = 0;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let activeShape: any = null;
+
+    const onDown = async (opt: { scenePoint?: { x: number; y: number } }) => {
+      isDown = true;
+      startX = opt.scenePoint?.x ?? 0;
+      startY = opt.scenePoint?.y ?? 0;
+
+      const { Rect, Ellipse, Line } = await import("fabric");
+      if (activeTool === "rect") {
+        activeShape = new Rect({
+          left: startX, top: startY, width: 0, height: 0,
+          fill: "transparent", stroke: brushColor, strokeWidth: brushSize,
+          selectable: false, evented: false,
+        });
+      } else if (activeTool === "circle") {
+        activeShape = new Ellipse({
+          left: startX, top: startY, rx: 0, ry: 0,
+          fill: "transparent", stroke: brushColor, strokeWidth: brushSize,
+          selectable: false, evented: false,
+        });
+      } else {
+        activeShape = new Line([startX, startY, startX, startY], {
+          stroke: brushColor, strokeWidth: brushSize,
+          selectable: false, evented: false,
+        });
+      }
+      fc.add(activeShape);
+      fc.renderAll();
+    };
+
+    const onMove = (opt: { scenePoint?: { x: number; y: number } }) => {
+      if (!isDown || !activeShape) return;
+      const x = opt.scenePoint?.x ?? 0;
+      const y = opt.scenePoint?.y ?? 0;
+      const dx = x - startX;
+      const dy = y - startY;
+
+      if (activeTool === "rect") {
+        activeShape.set({
+          left: dx < 0 ? x : startX,
+          top: dy < 0 ? y : startY,
+          width: Math.abs(dx),
+          height: Math.abs(dy),
+        });
+      } else if (activeTool === "circle") {
+        activeShape.set({
+          left: dx < 0 ? x : startX,
+          top: dy < 0 ? y : startY,
+          rx: Math.abs(dx) / 2,
+          ry: Math.abs(dy) / 2,
+        });
+      } else {
+        activeShape.set({ x2: x, y2: y });
+      }
+      fc.renderAll();
+    };
+
+    const onUp = () => {
+      isDown = false;
+      if (activeShape) {
+        activeShape.set({ selectable: true, evented: true });
+        fc.setActiveObject(activeShape);
+        activeShape = null;
+        fc.renderAll();
+      }
+    };
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    fc.on("mouse:down", onDown as any);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    fc.on("mouse:move", onMove as any);
+    fc.on("mouse:up", onUp);
+    return () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      fc.off("mouse:down", onDown as any);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      fc.off("mouse:move", onMove as any);
+      fc.off("mouse:up", onUp);
+    };
+  }, [activeTool, brushColor, brushSize]);
+
+  // Eraser: click on objects to remove them
+  useEffect(() => {
+    const fc = fabricRef.current;
+    if (!fc || activeTool !== "eraser") return;
+
+    const erase = (opt: { scenePoint?: { x: number; y: number } }) => {
+      if (!opt.scenePoint) return;
+      const pt = opt.scenePoint;
+      const objects = fc.getObjects();
+      for (let i = objects.length - 1; i >= 0; i--) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        if (objects[i].containsPoint(pt as any)) {
+          fc.remove(objects[i]);
+          fc.renderAll();
+          break;
+        }
+      }
+    };
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    fc.on("mouse:down", erase as any);
+    return () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      fc.off("mouse:down", erase as any);
+    };
+  }, [activeTool]);
 
   // Text placement: click to add IText in text mode
   useEffect(() => {

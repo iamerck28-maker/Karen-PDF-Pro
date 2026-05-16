@@ -1,6 +1,15 @@
 "use client";
 
-export type Tool = "select" | "brush" | "image" | "text";
+export type Tool =
+  | "select"
+  | "brush"
+  | "text"
+  | "image"
+  | "rect"
+  | "circle"
+  | "line"
+  | "eraser"
+  | "highlight";
 
 interface ToolbarProps {
   activeTool: Tool;
@@ -51,7 +60,7 @@ export default function Toolbar({
   return (
     <div className="flex items-center gap-2 flex-wrap px-4 py-3 bg-gray-900 border-b border-gray-700 select-none">
       {/* Tool buttons */}
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1 flex-wrap">
         <button
           className={`${btnBase} ${activeTool === "select" ? btnActive : btnInactive}`}
           onClick={() => onToolChange("select")}
@@ -67,6 +76,46 @@ export default function Toolbar({
           title="Free Draw"
         >
           ✏ Draw
+        </button>
+        <button
+          className={`${btnBase} ${activeTool === "highlight" ? btnActive : btnInactive}`}
+          onClick={() => onToolChange("highlight")}
+          disabled={!hasPdf}
+          title="Highlight"
+        >
+          ▌ Highlight
+        </button>
+        <button
+          className={`${btnBase} ${activeTool === "eraser" ? btnActive : btnInactive}`}
+          onClick={() => onToolChange("eraser")}
+          disabled={!hasPdf}
+          title="Eraser"
+        >
+          ◻ Eraser
+        </button>
+        <button
+          className={`${btnBase} ${activeTool === "rect" ? btnActive : btnInactive}`}
+          onClick={() => onToolChange("rect")}
+          disabled={!hasPdf}
+          title="Rectangle"
+        >
+          ▭ Rect
+        </button>
+        <button
+          className={`${btnBase} ${activeTool === "circle" ? btnActive : btnInactive}`}
+          onClick={() => onToolChange("circle")}
+          disabled={!hasPdf}
+          title="Ellipse"
+        >
+          ◯ Circle
+        </button>
+        <button
+          className={`${btnBase} ${activeTool === "line" ? btnActive : btnInactive}`}
+          onClick={() => onToolChange("line")}
+          disabled={!hasPdf}
+          title="Line"
+        >
+          ╱ Line
         </button>
         <button
           className={`${btnBase} ${activeTool === "text" ? btnActive : btnInactive}`}
@@ -100,24 +149,26 @@ export default function Toolbar({
 
       <div className="w-px h-6 bg-gray-600" />
 
-      {/* Brush controls */}
-      {activeTool === "brush" && (
+      {/* Brush / shape stroke controls */}
+      {["brush", "highlight", "eraser", "rect", "circle", "line"].includes(activeTool) && (
         <div className="flex items-center gap-3">
+          {activeTool !== "eraser" && (
+            <label className="flex items-center gap-2 text-sm text-gray-300">
+              Color
+              <input
+                type="color"
+                value={brushColor}
+                onChange={(e) => onBrushColorChange(e.target.value)}
+                className="w-8 h-8 cursor-pointer rounded border-0 bg-transparent"
+              />
+            </label>
+          )}
           <label className="flex items-center gap-2 text-sm text-gray-300">
-            Color
-            <input
-              type="color"
-              value={brushColor}
-              onChange={(e) => onBrushColorChange(e.target.value)}
-              className="w-8 h-8 cursor-pointer rounded border-0 bg-transparent"
-            />
-          </label>
-          <label className="flex items-center gap-2 text-sm text-gray-300">
-            Size {brushSize}px
+            {activeTool === "eraser" ? "Size" : "Size"} {brushSize}px
             <input
               type="range"
               min={1}
-              max={50}
+              max={activeTool === "eraser" ? 80 : 50}
               value={brushSize}
               onChange={(e) => onBrushSizeChange(Number(e.target.value))}
               className="w-24 accent-blue-500"
