@@ -51,6 +51,9 @@ export default function PDFEditor() {
   const focusedPageRef = useRef<number>(1);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const clipboardRef = useRef<any>(null);
+  const saveKeyRef = useRef<string | null>(null);
+  const pendingSavedStateRef = useRef<Record<number, string> | null>(null);
+  const [hasSavedState, setHasSavedState] = useState(false);
 
   const [isExporting, setIsExporting] = useState(false);
 
@@ -73,6 +76,19 @@ export default function PDFEditor() {
         const arrayBuffer = await file.arrayBuffer();
         const bytes = new Uint8Array(arrayBuffer);
         setPdfBytes(bytes);
+
+        const key = `karen-pdf-${file.name}-${bytes.length}`;
+        saveKeyRef.current = key;
+        pendingSavedStateRef.current = null;
+        const saved = localStorage.getItem(key);
+        if (saved) {
+          try {
+            pendingSavedStateRef.current = JSON.parse(saved);
+            setHasSavedState(true);
+          } catch { /* ignore */ }
+        } else {
+          setHasSavedState(false);
+        }
 
         const pdfjsLib = await import("pdfjs-dist");
 
@@ -114,10 +130,27 @@ export default function PDFEditor() {
     fabricCanvasesRef.current.set(pageNum, fc);
     isRestoringRef.current.set(pageNum, false);
 
-    // Seed undo stack with the initial empty canvas state
+    // Restore saved state if available for this page
+    const savedState = pendingSavedStateRef.current?.[pageNum];
+    if (savedState) {
+      fc.loadFromJSON(JSON.parse(savedState)).then(() => fc.renderAll());
+    }
+
     const initial = JSON.stringify(fc.toObject());
     undoStacksRef.current.set(pageNum, [initial]);
     redoStacksRef.current.set(pageNum, []);
+
+    const autoSave = () => {
+      const key = saveKeyRef.current;
+      if (!key) return;
+      try {
+        const state: Record<number, string> = {};
+        fabricCanvasesRef.current.forEach((canvas, pn) => {
+          state[pn] = JSON.stringify(canvas.toObject());
+        });
+        localStorage.setItem(key, JSON.stringify(state));
+      } catch { /* storage full — ignore */ }
+    };
 
     const pushSnapshot = () => {
       if (isRestoringRef.current.get(pageNum)) return;
@@ -126,7 +159,8 @@ export default function PDFEditor() {
       if (stack[stack.length - 1] !== json) {
         stack.push(json);
         undoStacksRef.current.set(pageNum, stack);
-        redoStacksRef.current.set(pageNum, []); // clear redo on new action
+        redoStacksRef.current.set(pageNum, []);
+        autoSave();
       }
     };
 
@@ -497,6 +531,20 @@ export default function PDFEditor() {
         {pdfDoc && (
           <span className="text-gray-400 text-sm">
             {pdfDoc.numPages} page{pdfDoc.numPages !== 1 ? "s" : ""}
+          </span>
+        )}
+        {hasSavedState && (
+          <span className="flex items-center gap-2 text-green-400 text-xs">
+            ✓ Progress restored
+            <button
+              onClick={() => {
+                if (saveKeyRef.current) localStorage.removeItem(saveKeyRef.current);
+                setHasSavedState(false);
+              }}
+              className="text-gray-500 hover:text-red-400 underline"
+            >
+              Clear
+            </button>
           </span>
         )}
         {isLoading && (
