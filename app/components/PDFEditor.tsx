@@ -37,6 +37,7 @@ export default function PDFEditor() {
   const [signatureOpen, setSignatureOpen] = useState(false);
   const [deletedPages, setDeletedPages] = useState<Set<number>>(new Set());
   const [pageRotations, setPageRotations] = useState<Map<number, number>>(new Map());
+  const [pageOrder, setPageOrder] = useState<number[]>([]);
   const pageContainerRef = useRef<HTMLDivElement>(null);
 
   // Fabric canvases per page (1-indexed)
@@ -95,6 +96,9 @@ export default function PDFEditor() {
           pages.push(await doc.getPage(i));
         }
         setPdfPages(pages);
+        setPageOrder(pages.map((_, i) => i));
+        setDeletedPages(new Set());
+        setPageRotations(new Map());
       } catch (err) {
         setLoadError(`Failed to load PDF: ${(err as Error).message}`);
       } finally {
@@ -175,6 +179,15 @@ export default function PDFEditor() {
     fc.loadFromJSON(JSON.parse(next)).then(() => {
       fc.renderAll();
       isRestoringRef.current.set(page, false);
+    });
+  }, []);
+
+  const handleReorderPages = useCallback((fromIndex: number, toIndex: number) => {
+    setPageOrder(prev => {
+      const next = [...prev];
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, moved);
+      return next;
     });
   }, []);
 
@@ -366,11 +379,12 @@ export default function PDFEditor() {
       const srcDoc = await PDFDocument.load(pdfBytes);
       const outDoc = await PDFDocument.create();
 
-      // Copy non-deleted pages in order
-      for (let i = 0; i < pdfPages.length; i++) {
-        const pageNum = i + 1;
+      // Copy pages in display order, skipping deleted ones
+      const order = pageOrder.length > 0 ? pageOrder : pdfPages.map((_, i) => i);
+      for (const originalIdx of order) {
+        const pageNum = originalIdx + 1;
         if (deletedPages.has(pageNum)) continue;
-        const [copied] = await outDoc.copyPages(srcDoc, [i]);
+        const [copied] = await outDoc.copyPages(srcDoc, [originalIdx]);
         outDoc.addPage(copied);
 
         // Apply rotation
@@ -378,7 +392,7 @@ export default function PDFEditor() {
         if (rot !== 0) copied.setRotation(degrees(rot));
 
         // Apply fabric annotations
-        const fc = fabricCanvasesRef.current.get(pageNum);
+        const fc = fabricCanvasesRef.current.get(originalIdx + 1);
         if (!fc || fc.getObjects().length === 0) continue;
         const dataUrl = fc.toDataURL({ format: "png", multiplier: 1 });
         const base64 = dataUrl.split(",")[1];
@@ -403,7 +417,7 @@ export default function PDFEditor() {
     } finally {
       setIsExporting(false);
     }
-  }, [pdfBytes, pdfPages, deletedPages, pageRotations]);
+  }, [pdfBytes, pdfPages, deletedPages, pageRotations, pageOrder]);
 
   const effectiveScale = PDF_SCALE * zoom;
 
@@ -485,9 +499,11 @@ export default function PDFEditor() {
       <div className="flex flex-1 overflow-hidden">
         {sidebarOpen && pdfPages.length > 0 && (
           <ThumbnailSidebar
-            pages={pdfPages}
+            pages={pageOrder.map(i => pdfPages[i])}
+            pageNums={pageOrder.map(i => i + 1)}
             currentPage={focusedPageRef.current}
             onPageClick={scrollToPage}
+            onReorder={handleReorderPages}
           />
         )}
 
@@ -509,9 +525,10 @@ export default function PDFEditor() {
           </div>
         )}
 
-        {pdfPages.map((page, i) => {
-          const pageNum = i + 1;
-          if (deletedPages.has(pageNum)) return null;
+        {pageOrder.map((originalIdx) => {
+          const pageNum = originalIdx + 1;
+          const page = pdfPages[originalIdx];
+          if (!page || deletedPages.has(pageNum)) return null;
           return (
             <div key={pageNum} className="relative group">
               <PDFPage
