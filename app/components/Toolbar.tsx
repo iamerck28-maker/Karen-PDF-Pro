@@ -33,6 +33,16 @@ interface ToolbarProps {
   sidebarOpen: boolean;
   onToggleSidebar: () => void;
   onSignatureClick: () => void;
+  textColor: string;
+  onTextColorChange: (color: string) => void;
+  fontFamily: string;
+  onFontFamilyChange: (font: string) => void;
+  bold: boolean;
+  onBoldToggle: () => void;
+  italic: boolean;
+  onItalicToggle: () => void;
+  underline: boolean;
+  onUnderlineToggle: () => void;
 }
 
 export default function Toolbar({
@@ -57,6 +67,16 @@ export default function Toolbar({
   sidebarOpen,
   onToggleSidebar,
   onSignatureClick,
+  textColor,
+  onTextColorChange,
+  fontFamily,
+  onFontFamilyChange,
+  bold,
+  onBoldToggle,
+  italic,
+  onItalicToggle,
+  underline,
+  onUnderlineToggle,
 }: ToolbarProps) {
   const btnBase =
     "px-3 py-2 rounded text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed";
@@ -203,17 +223,50 @@ export default function Toolbar({
 
       {/* Text controls */}
       {activeTool === "text" && (
-        <label className="flex items-center gap-2 text-sm text-gray-300">
-          Font size {fontSize}px
+        <div className="flex items-center gap-2 flex-wrap">
+          <select
+            value={fontFamily}
+            onChange={(e) => onFontFamilyChange(e.target.value)}
+            className="bg-gray-700 text-gray-200 text-sm rounded px-2 py-1 border border-gray-600"
+          >
+            {["Arial", "Georgia", "Times New Roman", "Courier New", "Verdana", "Helvetica"].map(f => (
+              <option key={f} value={f}>{f}</option>
+            ))}
+          </select>
+          <label className="flex items-center gap-1 text-sm text-gray-300">
+            {fontSize}px
+            <input
+              type="range"
+              min={8}
+              max={96}
+              value={fontSize}
+              onChange={(e) => onFontSizeChange(Number(e.target.value))}
+              className="w-20 accent-blue-500"
+            />
+          </label>
           <input
-            type="range"
-            min={8}
-            max={96}
-            value={fontSize}
-            onChange={(e) => onFontSizeChange(Number(e.target.value))}
-            className="w-24 accent-blue-500"
+            type="color"
+            value={textColor}
+            onChange={(e) => onTextColorChange(e.target.value)}
+            className="w-8 h-8 cursor-pointer rounded border-0 bg-transparent"
+            title="Text color"
           />
-        </label>
+          <button
+            onClick={onBoldToggle}
+            className={`${btnBase} ${bold ? btnActive : btnInactive} font-bold w-8`}
+            title="Bold"
+          >B</button>
+          <button
+            onClick={onItalicToggle}
+            className={`${btnBase} ${italic ? btnActive : btnInactive} italic w-8`}
+            title="Italic"
+          >I</button>
+          <button
+            onClick={onUnderlineToggle}
+            className={`${btnBase} ${underline ? btnActive : btnInactive} underline w-8`}
+            title="Underline"
+          >U</button>
+        </div>
       )}
 
       <div className="flex-1" />

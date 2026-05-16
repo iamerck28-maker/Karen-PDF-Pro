@@ -25,6 +25,11 @@ export default function PDFEditor() {
   const [brushColor, setBrushColor] = useState("#e53e3e");
   const [brushSize, setBrushSize] = useState(4);
   const [fontSize, setFontSize] = useState(24);
+  const [textColor, setTextColor] = useState("#111111");
+  const [fontFamily, setFontFamily] = useState("Arial");
+  const [bold, setBold] = useState(false);
+  const [italic, setItalic] = useState(false);
+  const [underline, setUnderline] = useState(false);
   const [pendingImage, setPendingImage] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1.0);
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -378,6 +383,16 @@ export default function PDFEditor() {
         sidebarOpen={sidebarOpen}
         onToggleSidebar={() => setSidebarOpen(v => !v)}
         onSignatureClick={() => setSignatureOpen(true)}
+        textColor={textColor}
+        onTextColorChange={setTextColor}
+        fontFamily={fontFamily}
+        onFontFamilyChange={setFontFamily}
+        bold={bold}
+        onBoldToggle={() => setBold(v => !v)}
+        italic={italic}
+        onItalicToggle={() => setItalic(v => !v)}
+        underline={underline}
+        onUnderlineToggle={() => setUnderline(v => !v)}
       />
 
       {/* Main area: sidebar + canvas */}
@@ -423,6 +438,11 @@ export default function PDFEditor() {
                 fontSize={fontSize}
                 pendingImage={pendingImage}
                 rotation={pageRotations.get(pageNum) ?? 0}
+                textColor={textColor}
+                fontFamily={fontFamily}
+                bold={bold}
+                italic={italic}
+                underline={underline}
                 onCanvasReady={handleCanvasReady}
                 onFocus={handleFocus}
                 onPendingImageConsumed={handlePendingImageConsumed}

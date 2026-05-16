@@ -16,6 +16,11 @@ interface PDFPageProps {
   fontSize: number;
   pendingImage: string | null;
   rotation?: number;
+  textColor?: string;
+  fontFamily?: string;
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
   onCanvasReady: (pageNum: number, fc: FabricCanvas) => void;
   onFocus: (pageNum: number) => void;
   onPendingImageConsumed: () => void;
@@ -31,6 +36,11 @@ export default function PDFPage({
   fontSize,
   pendingImage,
   rotation = 0,
+  textColor = "#111111",
+  fontFamily = "Arial",
+  bold = false,
+  italic = false,
+  underline = false,
   onCanvasReady,
   onFocus,
   onPendingImageConsumed,
@@ -315,8 +325,11 @@ export default function PDFPage({
           left: x,
           top: y,
           fontSize,
-          fill: "#111111",
-          fontFamily: "Arial",
+          fill: textColor,
+          fontFamily,
+          fontWeight: bold ? "bold" : "normal",
+          fontStyle: italic ? "italic" : "normal",
+          underline,
         });
         fc.add(text);
         fc.setActiveObject(text);
@@ -332,7 +345,7 @@ export default function PDFPage({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       fc.off("mouse:down", handler as any);
     };
-  }, [activeTool, fontSize]);
+  }, [activeTool, fontSize, textColor, fontFamily, bold, italic, underline]);
 
   return (
     <div
