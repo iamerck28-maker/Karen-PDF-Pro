@@ -30,6 +30,8 @@ interface ToolbarProps {
   onZoomIn: () => void;
   onZoomOut: () => void;
   onZoomReset: () => void;
+  sidebarOpen: boolean;
+  onToggleSidebar: () => void;
 }
 
 export default function Toolbar({
@@ -51,6 +53,8 @@ export default function Toolbar({
   onZoomIn,
   onZoomOut,
   onZoomReset,
+  sidebarOpen,
+  onToggleSidebar,
 }: ToolbarProps) {
   const btnBase =
     "px-3 py-2 rounded text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed";
@@ -59,6 +63,16 @@ export default function Toolbar({
 
   return (
     <div className="flex items-center gap-2 flex-wrap px-4 py-3 bg-gray-900 border-b border-gray-700 select-none">
+      {/* Sidebar toggle */}
+      <button
+        className={`${btnBase} ${sidebarOpen ? btnActive : btnInactive}`}
+        onClick={onToggleSidebar}
+        title="Toggle Page Thumbnails"
+      >
+        ☰ Pages
+      </button>
+
+      <div className="w-px h-6 bg-gray-600" />
       {/* Tool buttons */}
       <div className="flex items-center gap-1 flex-wrap">
         <button

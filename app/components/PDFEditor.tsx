@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Toolbar, { type Tool } from "./Toolbar";
 import PDFPage from "./PDFPage";
+import ThumbnailSidebar from "./ThumbnailSidebar";
 
 type FabricCanvas = import("fabric").Canvas;
 type PDFDocumentProxy = import("pdfjs-dist").PDFDocumentProxy;
@@ -25,6 +26,8 @@ export default function PDFEditor() {
   const [fontSize, setFontSize] = useState(24);
   const [pendingImage, setPendingImage] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1.0);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const pageContainerRef = useRef<HTMLDivElement>(null);
 
   // Fabric canvases per page (1-indexed)
   const fabricCanvasesRef = useRef<Map<number, FabricCanvas>>(new Map());
@@ -161,6 +164,12 @@ export default function PDFEditor() {
       fc.renderAll();
       isRestoringRef.current.set(page, false);
     });
+  }, []);
+
+  const scrollToPage = useCallback((pageNum: number) => {
+    const el = pageContainerRef.current?.querySelector(`[data-page="${pageNum}"]`);
+    el?.scrollIntoView({ behavior: "smooth", block: "start" });
+    focusedPageRef.current = pageNum;
   }, []);
 
   const handleZoomIn = useCallback(() => {
@@ -327,10 +336,22 @@ export default function PDFEditor() {
         onZoomIn={handleZoomIn}
         onZoomOut={handleZoomOut}
         onZoomReset={handleZoomReset}
+        sidebarOpen={sidebarOpen}
+        onToggleSidebar={() => setSidebarOpen(v => !v)}
       />
 
+      {/* Main area: sidebar + canvas */}
+      <div className="flex flex-1 overflow-hidden">
+        {sidebarOpen && pdfPages.length > 0 && (
+          <ThumbnailSidebar
+            pages={pdfPages}
+            currentPage={focusedPageRef.current}
+            onPageClick={scrollToPage}
+          />
+        )}
+
       {/* Scrollable canvas area */}
-      <div className="flex-1 overflow-y-auto bg-gray-800 py-6 px-4">
+      <div ref={pageContainerRef} className="flex-1 overflow-y-auto bg-gray-800 py-6 px-4">
         {!pdfDoc && !isLoading && (
           <div className="flex flex-col items-center justify-center h-full gap-4 text-gray-400">
             <div className="text-6xl opacity-20 select-none">📄</div>
@@ -363,6 +384,7 @@ export default function PDFEditor() {
             onPendingImageConsumed={handlePendingImageConsumed}
           />
         ))}
+      </div>
       </div>
     </div>
   );
