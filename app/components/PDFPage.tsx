@@ -16,6 +16,7 @@ interface PDFPageProps {
   fontSize: number;
   pendingImage: string | null;
   rotation?: number;
+  shapeFill?: string;
   textColor?: string;
   fontFamily?: string;
   bold?: boolean;
@@ -36,6 +37,7 @@ export default function PDFPage({
   fontSize,
   pendingImage,
   rotation = 0,
+  shapeFill = "transparent",
   textColor = "#111111",
   fontFamily = "Arial",
   bold = false,
@@ -213,13 +215,13 @@ export default function PDFPage({
       if (activeTool === "rect") {
         activeShape = new Rect({
           left: startX, top: startY, width: 0, height: 0,
-          fill: "transparent", stroke: brushColor, strokeWidth: brushSize,
+          fill: shapeFill, stroke: brushColor, strokeWidth: brushSize,
           selectable: false, evented: false,
         });
       } else if (activeTool === "circle") {
         activeShape = new Ellipse({
           left: startX, top: startY, rx: 0, ry: 0,
-          fill: "transparent", stroke: brushColor, strokeWidth: brushSize,
+          fill: shapeFill, stroke: brushColor, strokeWidth: brushSize,
           selectable: false, evented: false,
         });
       } else {
@@ -281,7 +283,7 @@ export default function PDFPage({
       fc.off("mouse:move", onMove as any);
       fc.off("mouse:up", onUp);
     };
-  }, [activeTool, brushColor, brushSize]);
+  }, [activeTool, brushColor, brushSize, shapeFill]);
 
   // Eraser: click on objects to remove them
   useEffect(() => {

@@ -34,6 +34,8 @@ interface ToolbarProps {
   sidebarOpen: boolean;
   onToggleSidebar: () => void;
   onSignatureClick: () => void;
+  shapeFill: string;
+  onShapeFillChange: (color: string) => void;
   textColor: string;
   onTextColorChange: (color: string) => void;
   fontFamily: string;
@@ -68,6 +70,8 @@ export default function Toolbar({
   sidebarOpen,
   onToggleSidebar,
   onSignatureClick,
+  shapeFill,
+  onShapeFillChange,
   textColor,
   onTextColorChange,
   fontFamily,
@@ -203,17 +207,33 @@ export default function Toolbar({
       <div className="w-px h-6 bg-gray-600" />
 
       {/* Brush / shape stroke controls */}
-      {["brush", "highlight", "eraser", "rect", "circle", "line", "pen"].includes(activeTool) && (
-        <div className="flex items-center gap-3">
+      {["brush", "highlight", "eraser", "rect", "circle", "line", "arrow", "pen"].includes(activeTool) && (
+        <div className="flex items-center gap-3 flex-wrap">
           {activeTool !== "eraser" && (
             <label className="flex items-center gap-2 text-sm text-gray-300">
-              Color
+              {["rect", "circle"].includes(activeTool) ? "Stroke" : "Color"}
               <input
                 type="color"
                 value={brushColor}
                 onChange={(e) => onBrushColorChange(e.target.value)}
                 className="w-8 h-8 cursor-pointer rounded border-0 bg-transparent"
               />
+            </label>
+          )}
+          {["rect", "circle"].includes(activeTool) && (
+            <label className="flex items-center gap-2 text-sm text-gray-300">
+              Fill
+              <input
+                type="color"
+                value={shapeFill === "transparent" ? "#ffffff" : shapeFill}
+                onChange={(e) => onShapeFillChange(e.target.value)}
+                className="w-8 h-8 cursor-pointer rounded border-0 bg-transparent"
+              />
+              <button
+                onClick={() => onShapeFillChange("transparent")}
+                className={`text-xs px-1.5 py-0.5 rounded ${shapeFill === "transparent" ? "bg-blue-600 text-white" : "bg-gray-700 text-gray-300"}`}
+                title="No fill"
+              >∅</button>
             </label>
           )}
           <label className="flex items-center gap-2 text-sm text-gray-300">

@@ -30,6 +30,7 @@ export default function PDFEditor() {
   const [bold, setBold] = useState(false);
   const [italic, setItalic] = useState(false);
   const [underline, setUnderline] = useState(false);
+  const [shapeFill, setShapeFill] = useState("transparent");
   const [pendingImage, setPendingImage] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1.0);
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -440,6 +441,8 @@ export default function PDFEditor() {
         onItalicToggle={() => setItalic(v => !v)}
         underline={underline}
         onUnderlineToggle={() => setUnderline(v => !v)}
+        shapeFill={shapeFill}
+        onShapeFillChange={setShapeFill}
       />
 
       {/* Main area: sidebar + canvas */}
@@ -490,6 +493,7 @@ export default function PDFEditor() {
                 bold={bold}
                 italic={italic}
                 underline={underline}
+                shapeFill={shapeFill}
                 onCanvasReady={handleCanvasReady}
                 onFocus={handleFocus}
                 onPendingImageConsumed={handlePendingImageConsumed}
