@@ -47,6 +47,8 @@ export default function PDFEditor() {
   // Flag to suppress snapshot pushes during undo/redo restore
   const isRestoringRef = useRef<Map<number, boolean>>(new Map());
   const focusedPageRef = useRef<number>(1);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const clipboardRef = useRef<any>(null);
 
   const [isExporting, setIsExporting] = useState(false);
 
@@ -221,7 +223,52 @@ export default function PDFEditor() {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const ctrl = e.metaKey || e.ctrlKey;
+
+      // Delete / Backspace — remove selected objects
+      if (e.key === "Delete" || e.key === "Backspace") {
+        const fc = fabricCanvasesRef.current.get(focusedPageRef.current);
+        if (!fc) return;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        if ((fc.getActiveObject() as any)?.isEditing) return;
+        const active = fc.getActiveObjects();
+        if (active.length === 0) return;
+        e.preventDefault();
+        fc.remove(...active);
+        fc.discardActiveObject();
+        fc.renderAll();
+        return;
+      }
+
       if (!ctrl) return;
+
+      // Ctrl+C — copy selected object
+      if (e.key === "c") {
+        const fc = fabricCanvasesRef.current.get(focusedPageRef.current);
+        const obj = fc?.getActiveObject();
+        if (!obj) return;
+        e.preventDefault();
+        obj.clone().then((cloned: unknown) => { clipboardRef.current = cloned; });
+        return;
+      }
+
+      // Ctrl+V — paste copied object
+      if (e.key === "v") {
+        if (!clipboardRef.current) return;
+        e.preventDefault();
+        const fc = fabricCanvasesRef.current.get(focusedPageRef.current);
+        if (!fc) return;
+        clipboardRef.current.clone().then((cloned: unknown) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const c = cloned as any;
+          c.set({ left: (c.left ?? 0) + 20, top: (c.top ?? 0) + 20 });
+          fc.add(c);
+          fc.setActiveObject(c);
+          fc.renderAll();
+          clipboardRef.current = c; // shift clipboard so repeated paste staggers
+        });
+        return;
+      }
+
       if (e.key === "z" && !e.shiftKey) {
         e.preventDefault();
         undo();
