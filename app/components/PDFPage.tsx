@@ -195,10 +195,10 @@ export default function PDFPage({
     fc.renderAll();
   }, [scale, pdfPage]);
 
-  // Shape drawing: rect, circle, line
+  // Shape drawing: rect, circle, line, arrow
   useEffect(() => {
     const fc = fabricRef.current;
-    if (!fc || !["rect", "circle", "line"].includes(activeTool)) return;
+    if (!fc || !["rect", "circle", "line", "arrow"].includes(activeTool)) return;
 
     let isDown = false;
     let startX = 0;
@@ -225,6 +225,7 @@ export default function PDFPage({
           selectable: false, evented: false,
         });
       } else {
+        // line and arrow both start as a Line preview
         activeShape = new Line([startX, startY, startX, startY], {
           stroke: brushColor, strokeWidth: brushSize,
           selectable: false, evented: false,
@@ -261,14 +262,39 @@ export default function PDFPage({
       fc.renderAll();
     };
 
-    const onUp = () => {
+    const onUp = async () => {
       isDown = false;
-      if (activeShape) {
+      if (!activeShape) return;
+
+      if (activeTool === "arrow") {
+        const x1 = startX;
+        const y1 = startY;
+        const x2 = activeShape.get("x2") ?? x1;
+        const y2 = activeShape.get("y2") ?? y1;
+        fc.remove(activeShape);
+        activeShape = null;
+
+        const angle = Math.atan2(y2 - y1, x2 - x1);
+        const headLen = Math.max(16, brushSize * 4);
+        const headAngle = Math.PI / 6;
+        const h1x = x2 - headLen * Math.cos(angle - headAngle);
+        const h1y = y2 - headLen * Math.sin(angle - headAngle);
+        const h2x = x2 - headLen * Math.cos(angle + headAngle);
+        const h2y = y2 - headLen * Math.sin(angle + headAngle);
+
+        const { Path } = await import("fabric");
+        const arrow = new Path(
+          `M ${x1} ${y1} L ${x2} ${y2} L ${h1x} ${h1y} M ${x2} ${y2} L ${h2x} ${h2y}`,
+          { stroke: brushColor, strokeWidth: brushSize, fill: "transparent", selectable: true }
+        );
+        fc.add(arrow);
+        fc.setActiveObject(arrow);
+      } else {
         activeShape.set({ selectable: true, evented: true });
         fc.setActiveObject(activeShape);
         activeShape = null;
-        fc.renderAll();
       }
+      fc.renderAll();
     };
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

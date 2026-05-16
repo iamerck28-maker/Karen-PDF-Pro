@@ -10,6 +10,7 @@ export type Tool =
   | "line"
   | "eraser"
   | "highlight"
+  | "arrow"
   | "pen";
 
 interface ToolbarProps {
@@ -157,6 +158,14 @@ export default function Toolbar({
           title="Line"
         >
           ╱ Line
+        </button>
+        <button
+          className={`${btnBase} ${activeTool === "arrow" ? btnActive : btnInactive}`}
+          onClick={() => onToolChange("arrow")}
+          disabled={!hasPdf}
+          title="Arrow"
+        >
+          → Arrow
         </button>
         <button
           className={`${btnBase} ${activeTool === "pen" ? btnActive : btnInactive}`}
