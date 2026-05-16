@@ -83,24 +83,25 @@ export default function PDFPage({
     const viewport = pdfPage.getViewport({ scale });
     const { Canvas, PencilBrush } = await import("fabric");
 
+    // Initial tool/brush values are set here; the sync effect below keeps
+    // them up-to-date on every change, so they don't belong in these deps.
     const fc = new Canvas(el, {
       width: viewport.width,
       height: viewport.height,
-      selection: activeTool === "select",
-      isDrawingMode: activeTool === "brush",
+      selection: false,
+      isDrawingMode: false,
       renderOnAddRemove: true,
     });
 
     const brush = new PencilBrush(fc);
-    brush.color = brushColor;
-    brush.width = brushSize;
     fc.freeDrawingBrush = brush;
 
     fabricRef.current = fc;
     onCanvasReady(pageNum, fc);
 
     fc.on("mouse:down", () => onFocus(pageNum));
-  }, [pdfPage, scale, pageNum, activeTool, brushColor, brushSize, onCanvasReady, onFocus]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pdfPage, scale, pageNum, onCanvasReady, onFocus]);
 
   // Virtual rendering: trigger on intersection
   useEffect(() => {
@@ -140,9 +141,7 @@ export default function PDFPage({
       }
       if (activeTool === "highlight") {
         if (!fc.freeDrawingBrush) fc.freeDrawingBrush = new PencilBrush(fc);
-        // Semi-transparent yellow highlight
-        const hex = brushColor === "#e53e3e" ? "#facc15" : brushColor;
-        fc.freeDrawingBrush.color = hex + "66"; // ~40% opacity
+        fc.freeDrawingBrush.color = brushColor + "66"; // ~40% opacity, user controls color
         fc.freeDrawingBrush.width = Math.max(brushSize, 12);
       }
       if (!["select", "brush", "highlight"].includes(activeTool)) {

@@ -217,7 +217,7 @@ export default function Toolbar({
             </label>
           )}
           <label className="flex items-center gap-2 text-sm text-gray-300">
-            {activeTool === "eraser" ? "Size" : "Size"} {brushSize}px
+            Size {brushSize}px
             <input
               type="range"
               min={1}
