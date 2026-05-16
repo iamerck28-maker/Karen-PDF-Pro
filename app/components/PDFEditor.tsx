@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Toolbar, { type Tool } from "./Toolbar";
 import PDFPage from "./PDFPage";
 import ThumbnailSidebar from "./ThumbnailSidebar";
+import SignatureModal from "./SignatureModal";
 
 type FabricCanvas = import("fabric").Canvas;
 type PDFDocumentProxy = import("pdfjs-dist").PDFDocumentProxy;
@@ -27,6 +28,7 @@ export default function PDFEditor() {
   const [pendingImage, setPendingImage] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1.0);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [signatureOpen, setSignatureOpen] = useState(false);
   const pageContainerRef = useRef<HTMLDivElement>(null);
 
   // Fabric canvases per page (1-indexed)
@@ -164,6 +166,22 @@ export default function PDFEditor() {
       fc.renderAll();
       isRestoringRef.current.set(page, false);
     });
+  }, []);
+
+  const handleApplySignature = useCallback(async (dataUrl: string) => {
+    const page = focusedPageRef.current;
+    const fc = fabricCanvasesRef.current.get(page);
+    if (!fc) return;
+    const { FabricImage } = await import("fabric");
+    const img = await FabricImage.fromURL(dataUrl);
+    const maxW = (fc.width ?? 400) * 0.4;
+    const scaleFactor = Math.min(1, maxW / (img.width || 1));
+    img.scale(scaleFactor);
+    img.set({ left: 80, top: 80 });
+    fc.add(img);
+    fc.setActiveObject(img);
+    fc.renderAll();
+    setActiveTool("select");
   }, []);
 
   const scrollToPage = useCallback((pageNum: number) => {
@@ -338,6 +356,7 @@ export default function PDFEditor() {
         onZoomReset={handleZoomReset}
         sidebarOpen={sidebarOpen}
         onToggleSidebar={() => setSidebarOpen(v => !v)}
+        onSignatureClick={() => setSignatureOpen(true)}
       />
 
       {/* Main area: sidebar + canvas */}
@@ -386,6 +405,13 @@ export default function PDFEditor() {
         ))}
       </div>
       </div>
+
+      {signatureOpen && (
+        <SignatureModal
+          onApply={handleApplySignature}
+          onClose={() => setSignatureOpen(false)}
+        />
+      )}
     </div>
   );
 }

@@ -32,6 +32,7 @@ interface ToolbarProps {
   onZoomReset: () => void;
   sidebarOpen: boolean;
   onToggleSidebar: () => void;
+  onSignatureClick: () => void;
 }
 
 export default function Toolbar({
@@ -55,6 +56,7 @@ export default function Toolbar({
   onZoomReset,
   sidebarOpen,
   onToggleSidebar,
+  onSignatureClick,
 }: ToolbarProps) {
   const btnBase =
     "px-3 py-2 rounded text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed";
@@ -159,6 +161,14 @@ export default function Toolbar({
           />
           + Image
         </label>
+        <button
+          className={`${btnBase} ${btnInactive}`}
+          onClick={onSignatureClick}
+          disabled={!hasPdf}
+          title="Add Signature"
+        >
+          ✍ Sign
+        </button>
       </div>
 
       <div className="w-px h-6 bg-gray-600" />
