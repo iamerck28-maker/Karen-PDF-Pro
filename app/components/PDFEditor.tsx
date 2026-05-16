@@ -29,6 +29,8 @@ export default function PDFEditor() {
   const [zoom, setZoom] = useState(1.0);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [signatureOpen, setSignatureOpen] = useState(false);
+  const [deletedPages, setDeletedPages] = useState<Set<number>>(new Set());
+  const [pageRotations, setPageRotations] = useState<Map<number, number>>(new Map());
   const pageContainerRef = useRef<HTMLDivElement>(null);
 
   // Fabric canvases per page (1-indexed)
@@ -168,6 +170,18 @@ export default function PDFEditor() {
     });
   }, []);
 
+  const handleDeletePage = useCallback((pageNum: number) => {
+    setDeletedPages(prev => new Set([...prev, pageNum]));
+  }, []);
+
+  const handleRotatePage = useCallback((pageNum: number) => {
+    setPageRotations(prev => {
+      const next = new Map(prev);
+      next.set(pageNum, ((prev.get(pageNum) ?? 0) + 90) % 360);
+      return next;
+    });
+  }, []);
+
   const handleApplySignature = useCallback(async (dataUrl: string) => {
     const page = focusedPageRef.current;
     const fc = fabricCanvasesRef.current.get(page);
@@ -260,26 +274,33 @@ export default function PDFEditor() {
     if (!pdfBytes || pdfPages.length === 0) return;
     setIsExporting(true);
     try {
-      const { PDFDocument } = await import("pdf-lib");
-      const pdfLibDoc = await PDFDocument.load(pdfBytes);
-      const pages = pdfLibDoc.getPages();
+      const { PDFDocument, degrees } = await import("pdf-lib");
+      const srcDoc = await PDFDocument.load(pdfBytes);
+      const outDoc = await PDFDocument.create();
 
+      // Copy non-deleted pages in order
       for (let i = 0; i < pdfPages.length; i++) {
-        const fc = fabricCanvasesRef.current.get(i + 1);
-        if (!fc || fc.getObjects().length === 0) continue;
+        const pageNum = i + 1;
+        if (deletedPages.has(pageNum)) continue;
+        const [copied] = await outDoc.copyPages(srcDoc, [i]);
+        outDoc.addPage(copied);
 
-        // Rasterize the Fabric overlay (transparent background)
+        // Apply rotation
+        const rot = pageRotations.get(pageNum) ?? 0;
+        if (rot !== 0) copied.setRotation(degrees(rot));
+
+        // Apply fabric annotations
+        const fc = fabricCanvasesRef.current.get(pageNum);
+        if (!fc || fc.getObjects().length === 0) continue;
         const dataUrl = fc.toDataURL({ format: "png", multiplier: 1 });
         const base64 = dataUrl.split(",")[1];
         const pngBytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
-
-        const embeddedPng = await pdfLibDoc.embedPng(pngBytes);
-        const pdfPage = pages[i];
-        const { width, height } = pdfPage.getSize();
-        pdfPage.drawImage(embeddedPng, { x: 0, y: 0, width, height });
+        const embeddedPng = await outDoc.embedPng(pngBytes);
+        const { width, height } = copied.getSize();
+        copied.drawImage(embeddedPng, { x: 0, y: 0, width, height });
       }
 
-      const savedBytes = await pdfLibDoc.save();
+      const savedBytes = await outDoc.save();
       const blob = new Blob([savedBytes as BlobPart], {
         type: "application/pdf",
       });
@@ -294,7 +315,7 @@ export default function PDFEditor() {
     } finally {
       setIsExporting(false);
     }
-  }, [pdfBytes, pdfPages]);
+  }, [pdfBytes, pdfPages, deletedPages, pageRotations]);
 
   const effectiveScale = PDF_SCALE * zoom;
 
@@ -387,22 +408,45 @@ export default function PDFEditor() {
           </div>
         )}
 
-        {pdfPages.map((page, i) => (
-          <PDFPage
-            key={i + 1}
-            pageNum={i + 1}
-            pdfPage={page}
-            scale={effectiveScale}
-            activeTool={activeTool}
-            brushColor={brushColor}
-            brushSize={brushSize}
-            fontSize={fontSize}
-            pendingImage={pendingImage}
-            onCanvasReady={handleCanvasReady}
-            onFocus={handleFocus}
-            onPendingImageConsumed={handlePendingImageConsumed}
-          />
-        ))}
+        {pdfPages.map((page, i) => {
+          const pageNum = i + 1;
+          if (deletedPages.has(pageNum)) return null;
+          return (
+            <div key={pageNum} className="relative group">
+              <PDFPage
+                pageNum={pageNum}
+                pdfPage={page}
+                scale={effectiveScale}
+                activeTool={activeTool}
+                brushColor={brushColor}
+                brushSize={brushSize}
+                fontSize={fontSize}
+                pendingImage={pendingImage}
+                rotation={pageRotations.get(pageNum) ?? 0}
+                onCanvasReady={handleCanvasReady}
+                onFocus={handleFocus}
+                onPendingImageConsumed={handlePendingImageConsumed}
+              />
+              {/* Page action buttons */}
+              <div className="absolute top-2 left-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-30">
+                <button
+                  onClick={() => handleRotatePage(pageNum)}
+                  className="px-2 py-1 bg-gray-800 bg-opacity-90 text-white text-xs rounded hover:bg-gray-700"
+                  title="Rotate 90°"
+                >
+                  ↻ Rotate
+                </button>
+                <button
+                  onClick={() => handleDeletePage(pageNum)}
+                  className="px-2 py-1 bg-red-800 bg-opacity-90 text-white text-xs rounded hover:bg-red-700"
+                  title="Delete Page"
+                >
+                  ✕ Delete
+                </button>
+              </div>
+            </div>
+          );
+        })}
       </div>
       </div>
 

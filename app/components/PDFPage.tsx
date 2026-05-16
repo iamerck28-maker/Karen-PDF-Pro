@@ -15,6 +15,7 @@ interface PDFPageProps {
   brushSize: number;
   fontSize: number;
   pendingImage: string | null;
+  rotation?: number;
   onCanvasReady: (pageNum: number, fc: FabricCanvas) => void;
   onFocus: (pageNum: number) => void;
   onPendingImageConsumed: () => void;
@@ -29,6 +30,7 @@ export default function PDFPage({
   brushSize,
   fontSize,
   pendingImage,
+  rotation = 0,
   onCanvasReady,
   onFocus,
   onPendingImageConsumed,
@@ -340,6 +342,8 @@ export default function PDFPage({
         width: pageSize.width || 820,
         height: pageSize.height || 1060,
         background: "#fff",
+        transform: rotation ? `rotate(${rotation}deg)` : undefined,
+        transition: "transform 0.3s ease",
       }}
       data-page={pageNum}
     >
