@@ -1,3 +1,4 @@
+import '@/lib/pdf-polyfill'; // must run in browser before PDF.js is used
 import * as pdfjs from 'pdfjs-dist';
 import { PDFDocument } from 'pdf-lib';
 
