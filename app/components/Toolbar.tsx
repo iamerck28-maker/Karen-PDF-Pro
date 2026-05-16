@@ -17,6 +17,10 @@ interface ToolbarProps {
   onExport: () => void;
   hasPdf: boolean;
   isExporting: boolean;
+  zoom: number;
+  onZoomIn: () => void;
+  onZoomOut: () => void;
+  onZoomReset: () => void;
 }
 
 export default function Toolbar({
@@ -34,6 +38,10 @@ export default function Toolbar({
   onExport,
   hasPdf,
   isExporting,
+  zoom,
+  onZoomIn,
+  onZoomOut,
+  onZoomReset,
 }: ToolbarProps) {
   const btnBase =
     "px-3 py-2 rounded text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed";
@@ -134,6 +142,36 @@ export default function Toolbar({
       )}
 
       <div className="flex-1" />
+
+      {/* Zoom controls */}
+      <div className="flex items-center gap-1">
+        <button
+          className={`${btnBase} ${btnInactive} w-8`}
+          onClick={onZoomOut}
+          disabled={!hasPdf}
+          title="Zoom Out (Ctrl+-)"
+        >
+          −
+        </button>
+        <button
+          className={`${btnBase} ${btnInactive} min-w-[52px] text-center`}
+          onClick={onZoomReset}
+          disabled={!hasPdf}
+          title="Reset Zoom (Ctrl+0)"
+        >
+          {Math.round(zoom * 100)}%
+        </button>
+        <button
+          className={`${btnBase} ${btnInactive} w-8`}
+          onClick={onZoomIn}
+          disabled={!hasPdf}
+          title="Zoom In (Ctrl+=)"
+        >
+          +
+        </button>
+      </div>
+
+      <div className="w-px h-6 bg-gray-600" />
 
       {/* Undo/Redo */}
       <div className="flex items-center gap-1">

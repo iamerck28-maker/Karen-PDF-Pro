@@ -24,6 +24,7 @@ export default function PDFEditor() {
   const [brushSize, setBrushSize] = useState(4);
   const [fontSize, setFontSize] = useState(24);
   const [pendingImage, setPendingImage] = useState<string | null>(null);
+  const [zoom, setZoom] = useState(1.0);
 
   // Fabric canvases per page (1-indexed)
   const fabricCanvasesRef = useRef<Map<number, FabricCanvas>>(new Map());
@@ -173,11 +174,20 @@ export default function PDFEditor() {
       } else if ((e.key === "z" && e.shiftKey) || e.key === "y") {
         e.preventDefault();
         redo();
+      } else if (e.key === "=" || e.key === "+") {
+        e.preventDefault();
+        handleZoomIn();
+      } else if (e.key === "-") {
+        e.preventDefault();
+        handleZoomOut();
+      } else if (e.key === "0") {
+        e.preventDefault();
+        handleZoomReset();
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [undo, redo]);
+  }, [undo, redo, handleZoomIn, handleZoomOut, handleZoomReset]);
 
   // ── Image upload ─────────────────────────────────────────────────────────
   const handleImageUpload = useCallback((file: File) => {
@@ -209,6 +219,14 @@ export default function PDFEditor() {
     setPendingImage(null);
     setActiveTool("select");
   }, []);
+
+  const handleZoomIn = useCallback(() => {
+    setZoom(z => Math.min(3.0, parseFloat((z + 0.25).toFixed(2))));
+  }, []);
+  const handleZoomOut = useCallback(() => {
+    setZoom(z => Math.max(0.25, parseFloat((z - 0.25).toFixed(2))));
+  }, []);
+  const handleZoomReset = useCallback(() => setZoom(1.0), []);
 
   // ── Export ───────────────────────────────────────────────────────────────
   const handleExport = useCallback(async () => {
@@ -250,6 +268,8 @@ export default function PDFEditor() {
       setIsExporting(false);
     }
   }, [pdfBytes, pdfPages]);
+
+  const effectiveScale = PDF_SCALE * zoom;
 
   // ── Render ───────────────────────────────────────────────────────────────
   return (
@@ -303,6 +323,10 @@ export default function PDFEditor() {
         onExport={handleExport}
         hasPdf={pdfPages.length > 0}
         isExporting={isExporting}
+        zoom={zoom}
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
+        onZoomReset={handleZoomReset}
       />
 
       {/* Scrollable canvas area */}
@@ -328,7 +352,7 @@ export default function PDFEditor() {
             key={i + 1}
             pageNum={i + 1}
             pdfPage={page}
-            scale={PDF_SCALE}
+            scale={effectiveScale}
             activeTool={activeTool}
             brushColor={brushColor}
             brushSize={brushSize}

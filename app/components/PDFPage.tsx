@@ -41,6 +41,7 @@ export default function PDFPage({
   const [pageSize, setPageSize] = useState({ width: 0, height: 0 });
   const [rendered, setRendered] = useState(false);
   const renderTaskRef = useRef<{ cancel: () => void } | null>(null);
+  const prevScaleRef = useRef(scale);
 
   // Render PDF page onto the base canvas
   const renderPdfPage = useCallback(async () => {
@@ -154,6 +155,27 @@ export default function PDFPage({
     };
     insertImage();
   }, [pendingImage, pageSize, pageNum, onPendingImageConsumed]);
+
+  // Resize fabric canvas and scale objects when zoom/scale changes
+  useEffect(() => {
+    const prevScale = prevScaleRef.current;
+    prevScaleRef.current = scale;
+    const fc = fabricRef.current;
+    if (!fc || prevScale === scale) return;
+    const ratio = scale / prevScale;
+    const viewport = pdfPage.getViewport({ scale });
+    fc.setDimensions({ width: viewport.width, height: viewport.height });
+    fc.getObjects().forEach((obj) => {
+      obj.set({
+        left: (obj.left ?? 0) * ratio,
+        top: (obj.top ?? 0) * ratio,
+        scaleX: (obj.scaleX ?? 1) * ratio,
+        scaleY: (obj.scaleY ?? 1) * ratio,
+      });
+      obj.setCoords();
+    });
+    fc.renderAll();
+  }, [scale, pdfPage]);
 
   // Text placement: click to add IText in text mode
   useEffect(() => {
