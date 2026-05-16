@@ -311,6 +311,112 @@ export default function PDFPage({
     };
   }, [activeTool]);
 
+  // Pen tool: click to add anchor points, double-click to finish path
+  useEffect(() => {
+    const fc = fabricRef.current;
+    if (!fc || activeTool !== "pen") return;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let points: Array<{ x: number; y: number }> = [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let previewLine: any = null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let anchors: any[] = [];
+
+    const addAnchor = async (x: number, y: number) => {
+      const { Circle } = await import("fabric");
+      const dot = new Circle({
+        left: x - 4,
+        top: y - 4,
+        radius: 4,
+        fill: brushColor,
+        stroke: "#fff",
+        strokeWidth: 1,
+        selectable: false,
+        evented: false,
+        data: { isPenAnchor: true },
+      });
+      fc.add(dot);
+      anchors.push(dot);
+      fc.renderAll();
+    };
+
+    const updatePreview = async (toX: number, toY: number) => {
+      const { Line } = await import("fabric");
+      if (previewLine) fc.remove(previewLine);
+      if (points.length === 0) return;
+      const last = points[points.length - 1];
+      previewLine = new Line([last.x, last.y, toX, toY], {
+        stroke: brushColor,
+        strokeWidth: brushSize,
+        strokeDashArray: [4, 4],
+        selectable: false,
+        evented: false,
+        data: { isPenPreview: true },
+      });
+      fc.add(previewLine);
+      fc.renderAll();
+    };
+
+    const finishPath = async () => {
+      if (previewLine) { fc.remove(previewLine); previewLine = null; }
+      anchors.forEach(a => fc.remove(a));
+      anchors = [];
+      if (points.length < 2) { points = []; fc.renderAll(); return; }
+
+      const { Path } = await import("fabric");
+      let d = `M ${points[0].x} ${points[0].y}`;
+      for (let i = 1; i < points.length; i++) {
+        d += ` L ${points[i].x} ${points[i].y}`;
+      }
+      const path = new Path(d, {
+        fill: "transparent",
+        stroke: brushColor,
+        strokeWidth: brushSize,
+        selectable: true,
+      });
+      fc.add(path);
+      fc.setActiveObject(path);
+      fc.renderAll();
+      points = [];
+    };
+
+    const onClick = (opt: { scenePoint?: { x: number; y: number }; e?: MouseEvent }) => {
+      const x = opt.scenePoint?.x ?? 0;
+      const y = opt.scenePoint?.y ?? 0;
+      if ((opt.e as MouseEvent)?.detail === 2) return; // double-click handled separately
+      points.push({ x, y });
+      addAnchor(x, y);
+    };
+
+    const onDblClick = () => { finishPath(); };
+
+    const onMove = (opt: { scenePoint?: { x: number; y: number } }) => {
+      if (points.length === 0) return;
+      updatePreview(opt.scenePoint?.x ?? 0, opt.scenePoint?.y ?? 0);
+    };
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    fc.on("mouse:down", onClick as any);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    fc.on("mouse:dblclick", onDblClick as any);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    fc.on("mouse:move", onMove as any);
+
+    return () => {
+      // Clean up in-progress pen state
+      if (previewLine) fc.remove(previewLine);
+      anchors.forEach(a => fc.remove(a));
+      fc.renderAll();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      fc.off("mouse:down", onClick as any);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      fc.off("mouse:dblclick", onDblClick as any);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      fc.off("mouse:move", onMove as any);
+    };
+  }, [activeTool, brushColor, brushSize]);
+
   // Text placement: click to add IText in text mode
   useEffect(() => {
     const fc = fabricRef.current;

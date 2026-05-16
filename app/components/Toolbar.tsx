@@ -9,7 +9,8 @@ export type Tool =
   | "circle"
   | "line"
   | "eraser"
-  | "highlight";
+  | "highlight"
+  | "pen";
 
 interface ToolbarProps {
   activeTool: Tool;
@@ -154,6 +155,14 @@ export default function Toolbar({
           ╱ Line
         </button>
         <button
+          className={`${btnBase} ${activeTool === "pen" ? btnActive : btnInactive}`}
+          onClick={() => onToolChange("pen")}
+          disabled={!hasPdf}
+          title="Pen Tool - click to add points, double-click to finish"
+        >
+          ✒ Pen
+        </button>
+        <button
           className={`${btnBase} ${activeTool === "text" ? btnActive : btnInactive}`}
           onClick={() => onToolChange("text")}
           disabled={!hasPdf}
@@ -194,7 +203,7 @@ export default function Toolbar({
       <div className="w-px h-6 bg-gray-600" />
 
       {/* Brush / shape stroke controls */}
-      {["brush", "highlight", "eraser", "rect", "circle", "line"].includes(activeTool) && (
+      {["brush", "highlight", "eraser", "rect", "circle", "line", "pen"].includes(activeTool) && (
         <div className="flex items-center gap-3">
           {activeTool !== "eraser" && (
             <label className="flex items-center gap-2 text-sm text-gray-300">
