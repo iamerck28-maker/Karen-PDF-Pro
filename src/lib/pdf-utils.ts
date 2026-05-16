@@ -2,10 +2,21 @@ import '@/lib/pdf-polyfill'; // must run in browser before PDF.js is used
 import * as pdfjs from 'pdfjs-dist';
 import { PDFDocument } from 'pdf-lib';
 
-// Worker is copied from node_modules to public/ by next.config.ts at build time,
-// ensuring the version always matches the installed pdfjs-dist package.
+// Try the pre-built worker first; fall back to fake-worker (main-thread) mode
+// when the module-worker cannot load (e.g. older iOS Safari).
 if (typeof window !== 'undefined') {
-  pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+  try {
+    // Test whether the browser can create a module worker at all
+    const test = new Worker(
+      URL.createObjectURL(new Blob([''], { type: 'application/javascript' })),
+      { type: 'module' },
+    );
+    test.terminate();
+    pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+  } catch {
+    // Module workers not supported — PDF.js will use its built-in fake worker
+    pdfjs.GlobalWorkerOptions.workerSrc = '';
+  }
 }
 
 export async function loadPdf(file: File) {

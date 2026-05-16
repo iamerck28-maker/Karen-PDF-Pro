@@ -37,6 +37,8 @@ export function PageCanvas({ pageNumber }: PageCanvasProps) {
   const fabricInstance = useRef<fabric.Canvas | null>(null);
   const [isVisible, setIsVisible] = useState(pageNumber === 1);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+  const [renderError, setRenderError] = useState(false);
+  const [renderKey, setRenderKey] = useState(0); // increment to force re-render
   const { push, undo, redo } = useHistory<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const prevZoomRef = useRef(zoom);
@@ -155,12 +157,23 @@ export function PageCanvas({ pageNumber }: PageCanvasProps) {
 
   // ── Load PDF page ─────────────────────────────────────────────────────────
   useEffect(() => {
-    if (isVisible && pdfDoc && pdfCanvasRef.current) {
-      renderPageToCanvas(pdfDoc, pageNumber, pdfCanvasRef.current, zoom).then((dims) => {
-        if (dims) setDimensions(dims);
+    if (!isVisible || !pdfDoc || !pdfCanvasRef.current) return;
+    let cancelled = false;
+    setRenderError(false);
+
+    renderPageToCanvas(pdfDoc, pageNumber, pdfCanvasRef.current, zoom)
+      .then((dims) => {
+        if (!cancelled && dims) setDimensions(dims);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          console.error(`Page ${pageNumber} render failed:`, err);
+          setRenderError(true);
+        }
       });
-    }
-  }, [isVisible, pdfDoc, pageNumber, zoom]);
+
+    return () => { cancelled = true; };
+  }, [isVisible, pdfDoc, pageNumber, zoom, renderKey]);
 
   // ── Zoom: resize Fabric canvas and scale objects ──────────────────────────
   useEffect(() => {
@@ -671,6 +684,19 @@ export function PageCanvas({ pageNumber }: PageCanvasProps) {
           <div className="absolute inset-0 z-10 w-full h-full">
             <canvas ref={fabricCanvasRef} />
           </div>
+          {renderError && (
+            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-white/90 dark:bg-slate-900/90 gap-3 p-4">
+              <p className="text-sm text-destructive font-semibold text-center">
+                Gagal memuat halaman {pageNumber}
+              </p>
+              <button
+                onClick={() => setRenderKey((k) => k + 1)}
+                className="px-4 py-2 text-sm font-semibold bg-black text-white dark:bg-white dark:text-black rounded-xl hover:opacity-80 transition-opacity"
+              >
+                Coba Lagi
+              </button>
+            </div>
+          )}
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center h-[300px] w-full text-muted-foreground animate-pulse gap-3">
