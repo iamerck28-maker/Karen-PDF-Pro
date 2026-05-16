@@ -8,7 +8,7 @@ import { loadPdf } from '@/lib/pdf-utils';
 import { Upload, FileText } from 'lucide-react';
 
 export function Editor() {
-  const { file, setFile, setPdfDoc, setNumPages, numPages, zoom } = useEditor();
+  const { file, setFile, setPdfDoc, setNumPages, numPages } = useEditor();
 
   const onFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -57,16 +57,7 @@ export function Editor() {
   return (
     <div className="min-h-screen bg-background pt-16 pb-28 md:pt-24 md:pb-12">
       <Toolbar />
-      {/* zoom wrapper: scale transforms don't affect layout, so we use inline style + transform-origin */}
-      <div
-        className="max-w-5xl mx-auto px-2 md:px-4"
-        style={{
-          transform: zoom !== 1 ? `scale(${zoom})` : undefined,
-          transformOrigin: 'top center',
-          // Compensate for the layout shift caused by scale so scrollbar stays accurate
-          marginBottom: zoom !== 1 ? `${(zoom - 1) * 100}%` : undefined,
-        }}
-      >
+      <div className="max-w-5xl mx-auto px-2 md:px-4">
         {Array.from({ length: numPages }, (_, i) => (
           <PageCanvas key={i + 1} pageNumber={i + 1} />
         ))}

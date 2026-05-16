@@ -103,6 +103,18 @@ export function PageCanvas({ pageNumber }: PageCanvasProps) {
     fabricInstance.current = canvas;
     fabricCanvases.current.set(pageNumber, canvas);
 
+    // Auto-save annotations to localStorage on every change
+    if (file) {
+      const saveKey = `karen-pdf-${file.name}-${file.size}-page${pageNumber}`;
+      const doSave = () => {
+        const json = canvas.toJSON();
+        if (json) localStorage.setItem(saveKey, JSON.stringify(json));
+      };
+      canvas.on('object:added', doSave);
+      canvas.on('object:modified', doSave);
+      canvas.on('object:removed', doSave);
+    }
+
     (canvas as any).historyUndo = () => {
       const state = undo();
       if (state) {
@@ -140,27 +152,6 @@ export function PageCanvas({ pageNumber }: PageCanvasProps) {
 
     saveState();
   }, [dimensions, pageNumber, push, undo, redo, fabricCanvases, file]);
-
-  // ── Auto-save to localStorage ─────────────────────────────────────────────
-  useEffect(() => {
-    if (!file || !fabricInstance.current) return;
-    const key = `karen-pdf-${file.name}-${file.size}-page${pageNumber}`;
-
-    const doSave = () => {
-      const json = fabricInstance.current?.toJSON();
-      if (json) localStorage.setItem(key, JSON.stringify(json));
-    };
-
-    const canvas = fabricInstance.current;
-    canvas.on('object:added', doSave);
-    canvas.on('object:modified', doSave);
-    canvas.on('object:removed', doSave);
-    return () => {
-      canvas.off('object:added', doSave);
-      canvas.off('object:modified', doSave);
-      canvas.off('object:removed', doSave);
-    };
-  }, [file, pageNumber, dimensions]);
 
   // ── Load PDF page ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -337,6 +328,8 @@ export function PageCanvas({ pageNumber }: PageCanvasProps) {
       }
 
       if (activeTool === 'pen') {
+        // Skip on double-click's second mousedown (detail === 2); dblclick handler will finish the path
+        if ((options.e as MouseEvent).detail >= 2) return;
         // Add anchor dot
         const dot = new fabric.Circle({
           left: pointer.x - 3,
