@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 export type Tool =
   | "select"
   | "brush"
@@ -35,6 +37,7 @@ interface ToolbarProps {
   sidebarOpen: boolean;
   onToggleSidebar: () => void;
   onSignatureClick: () => void;
+  onStamp: (text: string, color: string) => void;
   shapeFill: string;
   onShapeFillChange: (color: string) => void;
   textColor: string;
@@ -71,6 +74,7 @@ export default function Toolbar({
   sidebarOpen,
   onToggleSidebar,
   onSignatureClick,
+  onStamp,
   shapeFill,
   onShapeFillChange,
   textColor,
@@ -84,6 +88,16 @@ export default function Toolbar({
   underline,
   onUnderlineToggle,
 }: ToolbarProps) {
+  const [stampOpen, setStampOpen] = useState(false);
+  const stamps = [
+    { text: "APPROVED",     color: "#16a34a" },
+    { text: "DRAFT",        color: "#6b7280" },
+    { text: "CONFIDENTIAL", color: "#dc2626" },
+    { text: "REJECTED",     color: "#dc2626" },
+    { text: "REVIEWED",     color: "#2563eb" },
+    { text: "VOID",         color: "#9333ea" },
+  ];
+
   const btnBase =
     "px-3 py-2 rounded text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed";
   const btnActive = "bg-blue-600 text-white";
@@ -211,6 +225,31 @@ export default function Toolbar({
         >
           ✍ Sign
         </button>
+        {/* Stamp dropdown */}
+        <div className="relative">
+          <button
+            className={`${btnBase} ${btnInactive}`}
+            onClick={() => setStampOpen(v => !v)}
+            disabled={!hasPdf}
+            title="Add Stamp"
+          >
+            ⬛ Stamp ▾
+          </button>
+          {stampOpen && (
+            <div className="absolute top-full left-0 mt-1 bg-gray-800 border border-gray-600 rounded shadow-xl z-50 min-w-[160px]">
+              {stamps.map(s => (
+                <button
+                  key={s.text}
+                  onClick={() => { onStamp(s.text, s.color); setStampOpen(false); }}
+                  className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-700 font-bold"
+                  style={{ color: s.color }}
+                >
+                  {s.text}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="w-px h-6 bg-gray-600" />

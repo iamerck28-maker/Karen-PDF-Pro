@@ -190,6 +190,41 @@ export default function PDFEditor() {
     });
   }, []);
 
+  const handleStamp = useCallback(async (text: string, color: string) => {
+    const page = focusedPageRef.current;
+    const fc = fabricCanvasesRef.current.get(page);
+    if (!fc) return;
+    const { IText, Rect, Group } = await import("fabric");
+    const label = new IText(text, {
+      fontSize: 30,
+      fontWeight: "bold",
+      fill: color,
+      fontFamily: "Arial",
+      selectable: false,
+    });
+    const pad = 14;
+    const border = new Rect({
+      width: (label.width ?? 100) + pad * 2,
+      height: (label.height ?? 36) + pad,
+      fill: "transparent",
+      stroke: color,
+      strokeWidth: 3,
+      rx: 6, ry: 6,
+      left: -pad,
+      top: -pad / 2,
+      selectable: false,
+    });
+    const group = new Group([border, label], {
+      left: (fc.width ?? 400) / 2 - 80,
+      top: (fc.height ?? 500) / 3,
+      angle: -15,
+      selectable: true,
+    });
+    fc.add(group);
+    fc.setActiveObject(group);
+    fc.renderAll();
+  }, []);
+
   const handleApplySignature = useCallback(async (dataUrl: string) => {
     const page = focusedPageRef.current;
     const fc = fabricCanvasesRef.current.get(page);
@@ -431,6 +466,7 @@ export default function PDFEditor() {
         sidebarOpen={sidebarOpen}
         onToggleSidebar={() => setSidebarOpen(v => !v)}
         onSignatureClick={() => setSignatureOpen(true)}
+        onStamp={handleStamp}
         textColor={textColor}
         onTextColorChange={setTextColor}
         fontFamily={fontFamily}
