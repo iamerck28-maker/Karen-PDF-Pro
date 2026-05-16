@@ -14,7 +14,12 @@ export async function loadPdf(file: File) {
   return pdf;
 }
 
-export async function renderPageToCanvas(pdf: pdfjs.PDFDocumentProxy, pageNumber: number, canvas: HTMLCanvasElement) {
+export async function renderPageToCanvas(
+  pdf: pdfjs.PDFDocumentProxy,
+  pageNumber: number,
+  canvas: HTMLCanvasElement,
+  zoomMultiplier = 1,
+) {
   const page = await pdf.getPage(pageNumber);
 
   // Responsive scale: fit within the viewport width with padding, max 1.5x for quality
@@ -22,7 +27,7 @@ export async function renderPageToCanvas(pdf: pdfjs.PDFDocumentProxy, pageNumber
   const maxWidth = typeof window !== 'undefined'
     ? Math.min(window.innerWidth - 32, 1200)
     : 1200;
-  const scale = Math.min(1.5, maxWidth / baseViewport.width);
+  const scale = Math.min(1.5, maxWidth / baseViewport.width) * zoomMultiplier;
 
   const viewport = page.getViewport({ scale });
   const context = canvas.getContext('2d');
